@@ -4,26 +4,30 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9d001ce1-c856-429a-a55f-eba455c53fbf" name="Changes" comment="added the following:&#10;&#10;Spring Web (for the frontend API)&#10;Spring Data JPA (if you plan to use a database)&#10;H2 Database (for development)&#10;Thymeleaf (for the frontend templates)&#10;Lombok (to reduce boilerplate code)&#10;Spring Boot DevTools (for faster development)&#10;vite bundler for react">
-      <change beforePath="$PROJECT_DIR$/backend/.gitattributes" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/build.gradle" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/gradle/wrapper/gradle-wrapper.jar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/gradle/wrapper/gradle-wrapper.properties" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/gradlew" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/gradlew.bat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/settings.gradle" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/me/exo1i/backend/BackendApplication.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.properties" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/test/java/me/exo1i/backend/BackendApplicationTests.java" beforeDir="false" />
+    <list default="true" id="9d001ce1-c856-429a-a55f-eba455c53fbf" name="Changes" comment="switched to maven">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <projects_view>
+          <tree_state>
+            <expand />
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
+    <option name="UPDATE_TYPE" value="REBASE" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {
@@ -45,27 +49,27 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "main",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/home/exo/Downloads/search-engine/backend",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "Project",
-    "project.structure.proportion": "0.0",
-    "project.structure.side.proportion": "0.0",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/exo/Downloads/search-engine/backend&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -89,7 +93,8 @@
       <updated>1741620177534</updated>
       <workItem from="1741620178513" duration="908000" />
       <workItem from="1741621532563" duration="69000" />
-      <workItem from="1741773356654" duration="996000" />
+      <workItem from="1741773356654" duration="1210000" />
+      <workItem from="1741774639719" duration="6000" />
     </task>
     <task id="LOCAL-00001" summary="added the following:&#10;&#10;Spring Web (for the frontend API)&#10;Spring Data JPA (if you plan to use a database)&#10;H2 Database (for development)&#10;Thymeleaf (for the frontend templates)&#10;Lombok (to reduce boilerplate code)&#10;Spring Boot DevTools (for faster development)&#10;vite bundler for react">
       <option name="closed" value="true" />
@@ -99,7 +104,15 @@
       <option name="project" value="LOCAL" />
       <updated>1741620928784</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="switched to maven">
+      <option name="closed" value="true" />
+      <created>1741774368735</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1741774368735</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -120,6 +133,7 @@
     <option name="CHECK_CODE_SMELLS_BEFORE_PROJECT_COMMIT" value="false" />
     <MESSAGE value="added the following:&#10;&#10;Spring Web (for the frontend API)&#10;Spring Data JPA (if you plan to use a database)&#10;H2 Database (for development)&#10;Thymeleaf (for the frontend templates)&#10;Lombok (to reduce boilerplate code)&#10;Spring Boot DevTools (for faster development)" />
     <MESSAGE value="added the following:&#10;&#10;Spring Web (for the frontend API)&#10;Spring Data JPA (if you plan to use a database)&#10;H2 Database (for development)&#10;Thymeleaf (for the frontend templates)&#10;Lombok (to reduce boilerplate code)&#10;Spring Boot DevTools (for faster development)&#10;vite bundler for react" />
-    <option name="LAST_COMMIT_MESSAGE" value="added the following:&#10;&#10;Spring Web (for the frontend API)&#10;Spring Data JPA (if you plan to use a database)&#10;H2 Database (for development)&#10;Thymeleaf (for the frontend templates)&#10;Lombok (to reduce boilerplate code)&#10;Spring Boot DevTools (for faster development)&#10;vite bundler for react" />
+    <MESSAGE value="switched to maven" />
+    <option name="LAST_COMMIT_MESSAGE" value="switched to maven" />
   </component>
 </project>
