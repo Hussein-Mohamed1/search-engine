@@ -1,17 +1,37 @@
-export default async function Page() {
-    return (<div className="w-full">
-        <div className="flex w-full items-center justify-between">
-            <h1 className={`${lusitana.className} text-2xl`}>Invoices</h1>
-        </div>
-        <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
-            <Search placeholder="Search invoices..." />
-            <CreateInvoice />
-        </div>
-        {/*  <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
-        <Table query={query} currentPage={currentPage} />
-      </Suspense> */}
-        <div className="mt-5 flex w-full justify-center">
-            {/* <Pagination totalPages={totalPages} /> */}
-        </div>
+"use client"
+import {useSearchParams} from "next/navigation";
+import {SearchBar} from "@/components/searchBar";
+import {twMerge} from "tailwind-merge";
+
+function TopBar() {
+    return (
+        <>
+            {/* Top search bar and logo */}
+            <div className={
+                twMerge(
+                    "flex flex-row",
+                    "mx-12 my-4 space-x-2",
+                )}>
+
+                {/* Lumos Logo */}
+                <div className="flex flex-row text-xl font-extrabold font-mono text-center items-center">
+                    <div className={"tracking-widest"}>Lumos</div>
+                    <div className="text-md">💡</div>
+                </div>
+
+                {/* Search Bar */}
+                <SearchBar variant={"search"} />
+            </div>
+        </>
+    )
+}
+
+export default function Page() {
+    const searchParams = useSearchParams();
+    return (<div>
+        {/* Logo and search bar */}
+        <TopBar />
+
+
     </div>);
 }

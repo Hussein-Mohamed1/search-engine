@@ -1,7 +1,9 @@
-import {SearchBar} from "@/app/components/searchBar";
+import {SearchBar} from "@/components/searchBar";
+import {SearchButtons} from "@/components/searchButtons";
 
 
-export default function Home() {
+export default async function Home() {
+
     return (<main className="flex items-center justify-center h-screen">
         <div className="flex flex-col w-screen m-auto text-center items-center space-y-6">
 
@@ -13,17 +15,10 @@ export default function Home() {
 
 
             {/* Search Bar */}
-            <SearchBar />
+            <SearchBar className={"justify-center"} />
 
             {/* Search Buttons */}
-            <div className="flex flex-row  space-x-4 text-xs">
-                <button className="px-4 py-2 rounded-md bg-gray-200 text-black font-bold hover:bg-gray-300">
-                    Search
-                </button>
-                <button className="px-4 py-2 rounded-md bg-gray-200 text-black font-bold hover:bg-gray-300">
-                    I&#39;m Feeling Lucky
-                </button>
-            </div>
+            <SearchButtons />
         </div>
     </main>);
 }
