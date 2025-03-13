@@ -1,5 +1,5 @@
 "use client"
-import {useSearchParams} from "next/navigation";
+import {redirect, useSearchParams} from "next/navigation";
 import {SearchBar} from "@/components/searchBar";
 import {twMerge} from "tailwind-merge";
 
@@ -28,6 +28,9 @@ function TopBar() {
 
 export default function Page() {
     const searchParams = useSearchParams();
+    if (!searchParams.has('q') || searchParams.get('q').trim() === "")
+        redirect('/');
+
     return (<div>
         {/* Logo and search bar */}
         <TopBar />

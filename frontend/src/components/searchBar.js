@@ -4,7 +4,7 @@ import {BiSolidMicrophone} from "react-icons/bi";
 import useSearchStore from "@/store/searchStore";
 import {useRouter, useSearchParams} from "next/navigation";
 import {twMerge} from 'tailwind-merge'
-import {useLayoutEffect} from "react";
+import {useEffect} from "react";
 import {X} from "lucide-react";
 
 export function SearchBar({variant = "home", ...props}) {
@@ -13,6 +13,9 @@ export function SearchBar({variant = "home", ...props}) {
     const {push} = useRouter();
 
     const onSearch = () => {
+        if (!!!query)
+            return;
+
         const params = new URLSearchParams(searchParams);
         if (query) {
             params.set('q', query);
@@ -28,8 +31,9 @@ export function SearchBar({variant = "home", ...props}) {
         }
     };
 
-    useLayoutEffect(() => {
-        setQuery(searchParams.get("q"));
+    useEffect(() => {
+        if (!!!query)
+            setQuery(searchParams.get("q"));
     }, [])
 
     return (<div className={twMerge("flex w-full", props.className)}>
@@ -41,7 +45,7 @@ export function SearchBar({variant = "home", ...props}) {
 
             {/* Input Field - adjust padding based on variant */}
             <input
-                value={query}
+                value={query ?? ""}
                 onChange={event => (setQuery(event.target.value), console.log(event.target.value))}
                 onKeyDown={handleSearch}
                 className={twMerge("w-full h-full rounded-2xl outline-none text-black bg-transparent font-medium text-xs", variant === "home" ? "pl-10 pr-16" : "pl-4 pr-20")}

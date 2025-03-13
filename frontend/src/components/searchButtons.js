@@ -10,6 +10,9 @@ export function SearchButtons() {
     const {push} = useRouter();
 
     const onSearch = () => {
+        if (!!!query)
+            return;
+
         const params = new URLSearchParams(searchParams);
         if (query) {
             params.set('q', query);
