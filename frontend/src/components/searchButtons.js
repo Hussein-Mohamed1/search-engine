@@ -12,7 +12,7 @@ export function SearchButtons() {
     const onSearch = () => {
         if (!!!query)
             return;
-
+        
         const params = new URLSearchParams(searchParams);
         if (query) {
             params.set('q', query);

@@ -38,7 +38,7 @@ export function SearchBar({variant = "home", ...props}) {
 
     return (<div className={twMerge("flex w-full", props.className)}>
         <div
-            className="relative flex items-center mx-2 h-[2em] w-auto flex-grow max-w-[40vw] min-w-[30vw] rounded-2xl bg-white shadow-md">
+            className="relative flex items-center mx-2 h-[2em] w-auto flex-grow max-w-[50vw] min-w-[40vw] rounded-2xl bg-white shadow-md">
 
             {/* Search Icon conditionally rendered based on variant */}
             {variant === "home" && (<FaSearch className="absolute left-3 text-gray-500" size={13} />)}
@@ -48,7 +48,7 @@ export function SearchBar({variant = "home", ...props}) {
                 value={query ?? ""}
                 onChange={event => (setQuery(event.target.value), console.log(event.target.value))}
                 onKeyDown={handleSearch}
-                className={twMerge("w-full h-full rounded-2xl outline-none text-black bg-transparent font-medium text-xs", variant === "home" ? "pl-10 pr-16" : "pl-4 pr-20")}
+                className={twMerge("w-max h-full rounded-2xl outline-none text-black bg-transparent font-medium text-xs", variant === "home" ? "pl-10 pr-16" : "pl-4 pr-20")}
             />
 
             {/* Right Icons - Microphone, Camera & conditionally Search */}

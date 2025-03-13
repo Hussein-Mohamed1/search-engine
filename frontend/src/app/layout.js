@@ -1,12 +1,15 @@
-import {Nunito, Nunito_Sans} from "next/font/google";
-import "./globals.css";
+import {Nunito, Nunito_Sans, Open_Sans} from "next/font/google";
+import "./globals.css"
+const openSans = Open_Sans({
+    subsets: ["latin"], variable: "--font-open-sans", display: "swap",
+});
 
 const nunito = Nunito({
-    subsets: ["latin"],
+    subsets: ["latin"], variable: "--font-nunito", display: "swap",
 });
 
 const nunitoSans = Nunito_Sans({
-    subsets: ["latin"],
+    subsets: ["latin"], variable: "--font-nunito-sans", display: "swap",
 });
 
 export const metadata = {
@@ -17,7 +20,7 @@ export const metadata = {
 export default function RootLayout({children}) {
     return (<html lang="en">
         <body
-            className={`${nunito.className} ${nunitoSans.className} antialiased`}
+            className={`${nunito.variable} ${openSans.variable} ${nunitoSans.variable} font-sans antialiased`}
         >
             {children}
         </body>
