@@ -1,7 +1,6 @@
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-
 export function Pagination({ pagesNum }) {
   const searchParams = useSearchParams();
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
@@ -99,7 +98,7 @@ export function Pagination({ pagesNum }) {
 
   return (
     <>
-      <div className="flex flex-row items-center ">
+      <div className={`flex flex-row items-center`}>
         {currentPage > 10 && (
           <Link
             href={{

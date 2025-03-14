@@ -165,7 +165,6 @@ export async function GET(request) {
   const searchParams = request?.nextUrl.searchParams;
   const query = searchParams?.get("q");
   const crtPage = searchParams?.get("page") || 1;
-  console.log(query, crtPage);
 
   return NextResponse.json(
     {

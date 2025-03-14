@@ -59,16 +59,18 @@ export function SearchBar({
       )}
     >
       {/* Left Icon: Bulb (Always Visible, Fades & Moves in "search" Mode) */}
-      <div
-        className={twMerge(
-          "absolute left-3 flex items-center transition-all duration-300",
-          variant === "minimized"
-            ? "opacity-70 translate scale-75"
-            : "opacity-100"
-        )}
-      >
-        <span className="text-2xl">💡</span>
-      </div>
+      {variant !== "home" && (
+        <div
+          className={twMerge(
+            "absolute left-3 flex items-center transition-all duration-300",
+            variant === "minimized"
+              ? "opacity-70 translate scale-75"
+              : "opacity-100"
+          )}
+        >
+          <span className="text-2xl">💡</span>
+        </div>
+      )}
 
       {/* Input Field */}
       <input
@@ -79,7 +81,7 @@ export function SearchBar({
         className={twMerge(
           "w-full h-full rounded-2xl outline-none text-black bg-foreground font-medium transition-all duration-300",
           variant === "home"
-            ? "pl-10 pr-16"
+            ? "pl-4 pr-22"
             : variant === "search"
               ? `pl-10 pr-26`
               : `pl-10 pr-24`,

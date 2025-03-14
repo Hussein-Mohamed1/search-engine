@@ -30,9 +30,9 @@ export default function SearchResults({ data, ...props }) {
           {/* URL and favicon */}
           <div className="flex items-center mb-1">
             <div className="flex items-center">
-              <div className="flex border border-gray-200 rounded-full w-8 h-8 justify-center items-center overflow-hidden mr-2">
+              <div className="flex border border-gray-200 rounded-full w-9 h-9 justify-center items-center overflow-hidden mr-2">
                 <Image
-                  src="/vercel.svg"
+                  src={result?.icon ?? "/vercel.svg"}
                   alt={result.title}
                   width={20}
                   height={20}

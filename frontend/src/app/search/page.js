@@ -34,10 +34,12 @@ export default function Page() {
     (!data || !data.results || data.results.length === 0);
 
   return (
-    <div className="flex flex-col space-y-8 min-h-screen">
+    <div className="flex flex-col space-y-8 my-8 min-h-screen">
       {/* Search Bar (Smoothly Transitions on Scroll) */}
       <div
-        className={`sticky flex flex-row items-center justify-center mx-auto px-8 z-10 transition-all duration-300 rounded-2xl backdrop-blur-lg bg-white/10 ${
+        onMouseEnter={() => setScrolled(false)}
+        onMouseLeave={() => setScrolled(window.scrollY > 1 ? true : false)}
+        className={`fixed flex flex-row items-center justify-center mx-auto inset-x-0 w-fit px-8 z-10 transition-all duration-300 rounded-2xl backdrop-blur-lg bg-white/10 ${
           scrolled ? "py-3 shadow-md top-1" : "py-4 top-2"
         }`}
       >
@@ -56,7 +58,7 @@ export default function Page() {
 
       {/* Loading indicator */}
       {isLoading && (
-        <div className="flex flex-col m-auto justify-center py-8">
+        <div className="flex flex-col items-center justify-center py-[20vh] max-w-xl mx-auto text-center">
           <div className="text-white">
             <LoadingIcons.Circles className="size-[8em]" />
           </div>
@@ -85,8 +87,9 @@ export default function Page() {
               Search Error
             </h3>
             <p className="text-white/90 mb-4">
-              We couldn't complete your search request. This might be due to a
-              connection issue or a temporary problem with our search service.
+              We couldn&apos;t complete your search request. This might be due
+              to a connection issue or a temporary problem with our search
+              service.
             </p>
             <div className="flex flex-col space-y-3">
               <button
@@ -128,8 +131,9 @@ export default function Page() {
               No Results Found
             </h3>
             <p className="text-white/90 mb-4">
-              We couldn't find any matches for "
-              <span className="font-semibold">{searchParams.get("q")}</span>".
+              We couldn&apos;t find any matches for &quot;
+              <span className="font-semibold">{searchParams.get("q")}</span>
+              &quot;.
             </p>
             <div className="text-white/80 text-sm mb-6">
               <p className="mb-2">Suggestions:</p>
@@ -159,7 +163,7 @@ export default function Page() {
           <>
             <SearchResults data={data.results} className="mx-14 w-[50%]" />
             {/* Pagination Section */}
-            <div className="flex mx-auto mb-8">
+            <div className="flex mx-auto">
               <Pagination pagesNum={data.pages} />
             </div>
           </>
