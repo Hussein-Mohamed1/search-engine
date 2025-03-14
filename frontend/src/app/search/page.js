@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { SearchBar } from "@/components/searchBar";
 import Link from "next/link";
 import SearchResults from "@/components/searchResults";
+import { Pagination } from "@/components/pagination";
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -35,11 +36,10 @@ export default function Page() {
         }`}
       >
         <Link href="/">
-          <div className=" tracking-widest text-2xl font-extrabold mr-4">
+          <div className="tracking-widest text-2xl font-extrabold mr-4">
             Lumos
           </div>
         </Link>
-
         <SearchBar
           className="items-center transition-all duration-300"
           height={scrolled ? "h-10" : "h-12"}
@@ -54,18 +54,17 @@ export default function Page() {
           <div className="animate-pulse text-white">Loading results...</div>
         </div>
       )}
-
       {error && (
         <div className="text-red-500">
           Error loading results. Please try again.
         </div>
       )}
-
       {!isLoading && !error && (
         <>
-          <SearchResults data={data} className="mx-14 w-[50%]" />
-          <div>
-            
+          <SearchResults data={data?.results} className="mx-14 w-[50%]" />
+          {/* Pagination Section */}
+          <div className="flex mx-auto mb-8">
+            <Pagination pagesNum={data.pages} />
           </div>
         </>
       )}

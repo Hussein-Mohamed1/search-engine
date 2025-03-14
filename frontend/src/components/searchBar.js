@@ -5,7 +5,7 @@ import useSearchStore from "@/store/searchStore";
 import { useRouter, useSearchParams } from "next/navigation";
 import { twMerge } from "tailwind-merge";
 import { useEffect } from "react";
-import { X } from "lucide-react";
+import { useDebouncedCallback } from "use-debounce";
 
 export function SearchBar({
   variant = "home",
@@ -25,6 +25,19 @@ export function SearchBar({
     query ? params.set("q", query) : params.delete("q");
     push(`/search?${params.toString()}`);
   };
+
+  // Used to show search suggestion to the user...
+  const handleShowSuggestion = useDebouncedCallback((term) => {
+    console.log(`Searching... ${term}`);
+
+    const params = new URLSearchParams(searchParams);
+    if (term) {
+      params.set("query", term);
+    } else {
+      params.delete("query");
+    }
+    replace(`${pathname}?${params.toString()}`);
+  }, 300);
 
   const handleSearch = (e) => {
     if (e.key === "Enter") onSearch();
@@ -61,12 +74,15 @@ export function SearchBar({
       <input
         type="text"
         value={query || ""}
-        placeholder="Search"
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={handleSearch}
         className={twMerge(
           "w-full h-full rounded-2xl outline-none text-black bg-foreground font-medium transition-all duration-300",
-          variant === "home" ? "pl-10 pr-16" : variant === "search"? `pl-10 pr-26`:`pl-10 pr-24`,
+          variant === "home"
+            ? "pl-10 pr-16"
+            : variant === "search"
+              ? `pl-10 pr-26`
+              : `pl-10 pr-24`,
           textSize
         )}
       />
