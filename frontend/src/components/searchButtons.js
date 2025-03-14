@@ -10,9 +10,8 @@ export function SearchButtons() {
     const {push} = useRouter();
 
     const onSearch = () => {
-        if (!!!query)
-            return;
-        
+        if (!!!query) return;
+
         const params = new URLSearchParams(searchParams);
         if (query) {
             params.set('q', query);
@@ -23,7 +22,7 @@ export function SearchButtons() {
     }
 
 
-    return (<div className="flex flex-row  space-x-4 text-xs">
+    return (<div className="flex flex-row  space-x-4 font-light text-[1.3em]">
         <button
             className="px-4 py-2 rounded-md bg-gray-200 text-black font-bold hover:bg-gray-300"
             onClick={onSearch}

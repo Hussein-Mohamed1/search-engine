@@ -20,7 +20,7 @@ export const metadata = {
 export default function RootLayout({children}) {
     return (<html lang="en">
         <body
-            className={`${nunito.variable} ${openSans.variable} ${nunitoSans.variable} font-sans antialiased`}
+            className={`${nunito.variable} ${nunitoSans.variable} font-sans antialiased`}
         >
             {children}
         </body>

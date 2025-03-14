@@ -2,7 +2,7 @@
 
 :root {
     /* Base theme colors */
-    --background: #ffffff;
+    --background: #101218;
     --foreground: #202124;
 
     /* Google-specific colors */
@@ -39,6 +39,7 @@
     --color-background: var(--background);
     --color-foreground: var(--foreground);
 }
+
 
 @media (prefers-color-scheme: dark) {
     :root {
