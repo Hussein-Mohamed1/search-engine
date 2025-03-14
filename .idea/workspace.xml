@@ -5,8 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a0376da1-9e46-4a37-ab34-d8024e10413a" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/searchengine/ranker/RelevanceScorer.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/searchengine/ranker/RelevanceScorer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/searchengine/ranker/PopularityScorer.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/searchengine/ranker/PopularityScorer.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -54,8 +53,14 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Gradle.Build backend.executor": "Run",
+    "RequestMappingsPanelOrder0": "0",
+    "RequestMappingsPanelOrder1": "1",
+    "RequestMappingsPanelWidth0": "75",
+    "RequestMappingsPanelWidth1": "75",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
+    "Spring Boot.BackendApplication.executor": "Run",
     "git-widget-placeholder": "ranking",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "D:/CMP/second-year-term2/APT/Search Engine Project/search-engine",
