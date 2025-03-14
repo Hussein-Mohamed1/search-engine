@@ -7,6 +7,8 @@ import java.lang.Object;
 import org.apache.lucene.analysis.en.PorterStemFilter;
 import org.tartarus.snowball.ext.PorterStemmer;
 //import org.apache.lucene.analysis.ar.ArabicStemmer;
+import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
 
 
 public class Tokenizer {
@@ -36,11 +38,13 @@ public class Tokenizer {
     public Tokenizer() {
     }
 
+
+    public boolean isAbbreviation(String word) {
+        return word.matches("[A-Za-z]+(\\.[A-Za-z]+)+"); // Matches abbreviations like "U.S.A.", "Ph.D."
+    }
+
     public String StemWord(String word)
     {
-        //todo
-        //asking the TA if i use built-in library to do the stemmer in an efficent way
-
         stemmer.setCurrent(word);
         stemmer.stem();
         return stemmer.getCurrent();
@@ -49,13 +53,14 @@ public class Tokenizer {
 
     public  List<String> tokenize(String text) {
         text = text.toLowerCase();
-        text = text.replaceAll("[^a-zA-Z0-9]", " ").trim();//remove punctuation
+        text = text.replaceAll("[^a-zA-Z0-9'\\-]", " ").trim();
+        text = text.replaceAll("\\b\\d+\\b", " ");
         String []words=text.split(" ");
 //        System.out.println(Arrays.toString(words));
         List<String>tokens=new ArrayList<>();
         for(String word:words){
-            if(!StopWords.contains(word)&&word.length()>1){
-                word=StemWord(word).trim();
+            if (!word.isEmpty() && !StopWords.contains(word) && word.length() > 1||isAbbreviation(word)) {
+                word = StemWord(word).trim();
                 tokens.add(word);
             }
         }
