@@ -10,8 +10,8 @@ import { useDebouncedCallback } from "use-debounce";
 
 const MAX_SUGGESTIONS_COUNT = 5;
 
-// SearchBar component for search and minimized variants
-export function SearchBar({ variant = "search", ...props }) {
+// HomeSearchBar component for the home variant
+export function HomeSearchBar(props) {
   const { query, setQuery } = useSearchStore();
   const searchParams = useSearchParams();
   const { push } = useRouter();
@@ -90,11 +90,6 @@ export function SearchBar({ variant = "search", ...props }) {
     };
   }, []);
 
-  // Hide the suggestions if the search bar is minimized
-  useEffect(() => {
-    if (variant === "minimized") setShowSuggestions(false);
-  }, [variant]);
-
   useEffect(() => {
     if (!query) setQuery(searchParams.get("q") || "");
   }, []);
@@ -103,22 +98,10 @@ export function SearchBar({ variant = "search", ...props }) {
     <div className="relative">
       <div
         className={twMerge(
-          "relative flex flex-row items-center bg-foreground rounded-2xl h-12 w-full transition-all duration-300",
+          "relative flex flex-row items-center bg-foreground rounded-2xl",
           props.className
         )}
       >
-        {/* Left Icon: Bulb */}
-        <div
-          className={twMerge(
-            "absolute left-2 flex items-center transition-all duration-300",
-            variant === "minimized"
-              ? "opacity-70 translate scale-75"
-              : "opacity-100"
-          )}
-        >
-          <span className="text-2xl">💡</span>
-        </div>
-
         {/* Input Field */}
         <input
           ref={inputRef}
@@ -127,35 +110,15 @@ export function SearchBar({ variant = "search", ...props }) {
           onChange={handleInputChange}
           onKeyDown={handleSearch}
           onFocus={() => query && setShowSuggestions(true)}
-          className="w-full h-full rounded-4xl outline-none text-black bg-foreground font-medium pl-10 pr-24"
+          className="w-full h-full rounded-2xl outline-none text-black bg-foreground font-medium pl-4 pr-22"
         />
-
         {/* Right Icons */}
-        <div className="absolute right-3 flex items-center space-x-2 transition-all duration-300">
-          <BiSolidMicrophone
-            className={twMerge(
-              "text-gray-500 cursor-pointer transition-all duration-300 w-5 h-5",
-              variant === "minimized"
-                ? "scale-75 opacity-70"
-                : "scale-100 opacity-100"
-            )}
-          />
-          <FaCamera
-            className={twMerge(
-              "text-gray-500 cursor-pointer transition-all duration-300 w-5 h-5",
-              variant === "minimized"
-                ? "scale-75 opacity-70"
-                : "scale-100 opacity-100"
-            )}
-          />
+        <div className="absolute right-3 flex items-center space-x-2">
+          <BiSolidMicrophone className="text-gray-500 cursor-pointer w-5 h-5" />
+          <FaCamera className="text-gray-500 cursor-pointer w-5 h-5" />
           <button
             onClick={onSearch}
-            className={twMerge(
-              "hover:bg-gray-200 p-1 rounded-full transition-all duration-300",
-              variant === "minimized"
-                ? "scale-75 opacity-70"
-                : "scale-100 opacity-100"
-            )}
+            className="hover:bg-gray-200 p-1 rounded-full"
           >
             <FaSearch className="h-4 w-4 text-gray-500 cursor-pointer" />
           </button>

@@ -1,12 +1,13 @@
 "use client";
 import { redirect, useSearchParams } from "next/navigation";
 import useSWR from "swr";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SearchBar } from "@/components/searchBar";
 import Link from "next/link";
 import SearchResults from "@/components/searchResults";
 import LoadingIcons from "react-loading-icons";
 import { Pagination } from "@/components/pagination";
+import Draggable from "react-draggable";
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -34,13 +35,14 @@ export default function Page() {
     (!data || !data.results || data.results.length === 0);
 
   return (
-    <div className="flex flex-col space-y-8 my-8 min-h-screen">
+    <div className="flex flex-col space-y-8 my-22 md:my-8 min-h-screen">
       {/* Search Bar (Smoothly Transitions on Scroll) */}
+
       <div
         onMouseEnter={() => setScrolled(false)}
         onMouseLeave={() => setScrolled(window.scrollY > 1 ? true : false)}
-        className={`fixed flex flex-row items-center justify-center mx-auto inset-x-0 w-fit px-8 z-10 transition-all duration-300 rounded-2xl backdrop-blur-lg bg-white/10 ${
-          scrolled ? "py-3 shadow-md top-1" : "py-4 top-2"
+        className={`fixed flex flex-row items-center justify-center mx-auto inset-x-0 w-fit px-8 z-[99999] transition-all duration-300 rounded-2xl backdrop-blur-lg bg-white/10 ${
+          scrolled ? "py-3 shadow-md top-1 -translate-y-12" : "py-4 top-1"
         }`}
       >
         <Link href="/">
@@ -49,9 +51,7 @@ export default function Page() {
           </div>
         </Link>
         <SearchBar
-          className="items-center transition-all duration-300"
-          height={scrolled ? "h-10" : "h-12"}
-          width={scrolled ? "w-[30em]" : "w-[40em]"}
+          className="items-center transition-all duration-300 w-52 md:w-[32em] h-10 "
           variant={scrolled ? "minimized" : "search"}
         />
       </div>
@@ -161,7 +161,7 @@ export default function Page() {
         data.results &&
         data.results.length > 0 && (
           <>
-            <SearchResults data={data.results} className="mx-14 w-[50%]" />
+            <SearchResults data={data.results} className="mx-8" />
             {/* Pagination Section */}
             <div className="flex mx-auto">
               <Pagination pagesNum={data.pages} />
