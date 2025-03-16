@@ -12,7 +12,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="flex items-center justify-center h-screen">
+    <main className="flex items-center justify-center min-h-screen overflow-hidden">
       <div className="flex flex-col w-screen m-auto text-center items-center space-y-6">
         {/* Lumos Logo */}
         <div className="flex flex-row text-7xl text-center items-center">

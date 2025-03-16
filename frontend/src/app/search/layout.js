@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import "./globals.css";
+import "../globals.css";
 
 export const metadata = {
   title: "Lumos: Search Engine",
@@ -35,7 +35,9 @@ const ubuntu = Ubuntu({
   subsets: ["latin"],
 });
 
-export default function RootLayout({ children }) {
+import { headers } from "next/headers";
+
+export default async function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`antialiased`}>
@@ -44,8 +46,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-
-/**
- *  Inter for logo with w=100
- *
- */

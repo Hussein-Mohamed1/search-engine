@@ -7,7 +7,6 @@ import Link from "next/link";
 import SearchResults from "@/components/searchResults";
 import LoadingIcons from "react-loading-icons";
 import { Pagination } from "@/components/pagination";
-import Draggable from "react-draggable";
 
 const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
@@ -21,10 +20,10 @@ export default function Page() {
     fetcher
   );
 
-  const [scrolled, setScrolled] = useState(false);
 
+  const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY);
+    const handleScroll = () => setScrolled(window.scrollY >50);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -42,7 +41,9 @@ export default function Page() {
         onMouseEnter={() => setScrolled(false)}
         onMouseLeave={() => setScrolled(window.scrollY > 1 ? true : false)}
         className={`fixed flex flex-row items-center justify-center mx-auto inset-x-0 w-fit px-8 z-[99999] transition-all duration-300 rounded-2xl backdrop-blur-lg bg-white/10 ${
-          scrolled ? "py-3 shadow-md top-1 -translate-y-12" : "py-4 top-1"
+          scrolled
+            ? "py-3 shadow-md top-1 -translate-y-8 md:-translate-y-14 scale-85"
+            : "py-4 top-1"
         }`}
       >
         <Link href="/">
