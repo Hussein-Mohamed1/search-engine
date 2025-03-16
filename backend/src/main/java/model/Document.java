@@ -1,25 +1,44 @@
 package model;
 
-
 import java.util.List;
-
-
+import java.util.UUID;
 
 public class Document implements Comparable<Document> {
+    private int id; // Unique identifier for the document
     private String url;
     private String title;
     private String mainHeading;
-    private List<String>subHeading;
+    private List<String> subHeading;
     private String content;
-    private List<String>Links;
+    private List<String> Links;
 
-    public Document(String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
+    public Document(int id, String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
+        this.id = id;
         this.url = url;
         this.title = title;
         this.mainHeading = mainHeading;
         this.subHeading = subHeading;
         this.content = content;
         this.Links = Links;
+    }
+
+    // Alternative constructor for auto-generating IDs
+    public Document(String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
+        this.id = url.hashCode(); // Generate ID based on URL (ensures consistency)
+        this.url = url;
+        this.title = title;
+        this.mainHeading = mainHeading;
+        this.subHeading = subHeading;
+        this.content = content;
+        this.Links = Links;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getUrl() {
