@@ -15,7 +15,7 @@ public class BuildInvertedIndexTest {
         documents.add(new Document(
                 1,
                 "https://example.com/doc1",
-                "Search Engine Optimization",  // Title
+                "Search Engine Optimization model",  // Title
                 "SEO Basics",                 // Main Heading
                 Arrays.asList("Introduction", "Best Practices"), // Subheadings
                 "Search engines analyze web content to rank pages.", // Content
@@ -26,9 +26,9 @@ public class BuildInvertedIndexTest {
                 2,
                 "https://example.com/doc2",
                 "Machine Learning and AI",
-                "Deep Learning Fundamentals",
-                Arrays.asList("Neural Networks", "Training Models"),
-                "AI models improve search engines over time.",
+                "Deep Learning Fundamentals model",
+                Arrays.asList("Neural Networks", "Training model model"),
+                "AI models models improve search engines over time.",
                 Arrays.asList("https://ai.com")
         ));
 

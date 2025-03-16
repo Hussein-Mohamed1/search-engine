@@ -30,28 +30,23 @@ public class Tokenizer {
 
     private final PorterStemmer stemmer = new PorterStemmer();
 
-    public Map<String, Posting> tokenizeWithPriority(String text, int priority) {
+    public void tokenizeWithPriority(String text, int priority, Map<String, Posting> tokenMap) {
         text = text.toLowerCase().replaceAll("[^a-zA-Z0-9'\\-]", " ").trim();
         text = text.replaceAll("\\b\\d+\\b", " "); // Remove numbers
         String[] words = text.split("\\s+");
 
-        Map<String, Posting> tokenMap = new HashMap<>();
         for (String word : words) {
             if (word.isEmpty() || STOP_WORDS.contains(word) || word.length() <= 1) continue;
 
+            // Stem the word
             stemmer.setCurrent(word);
             stemmer.stem();
             word = stemmer.getCurrent();
 
-            // Add to token map with priority-based positions
-            if (tokenMap.containsKey(word)) {
-                tokenMap.get(word).addPosition(priority);
-            } else {
-                tokenMap.put(word, new Posting());
-                tokenMap.get(word).addPosition(priority);
-            }
-
+            // Update tokenMap without reinitializing it
+            tokenMap.putIfAbsent(word, new Posting());
+            tokenMap.get(word).addPosition(priority); // Adds position & increments TF
         }
-        return tokenMap;
     }
+
 }
