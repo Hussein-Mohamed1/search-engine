@@ -1,6 +1,81 @@
 package Crawler;
 
-public class Crawler {
-void parseHtml()
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
+import java.io.*;
+import java.net.URL;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
+
+
+public class Crawler {
+    private static final HashSet<String> visitedURLSet = new HashSet<>();
+    private static final URLNormalizer normalizer = new URLNormalizer();
+    private static final Queue<String> urlQueue = new LinkedList<>();
+    private static final String seedsFilePath = "/home/tasneem-ahmed/IdeaProjects/search-engine/backend/src/main/resources/static/seeds.txt";
+    void loadSeeds() {
+        try{
+            try(BufferedReader reader = new BufferedReader(new FileReader(seedsFilePath))) {
+                String line;
+                while((line = reader.readLine()) != null){
+                    if (isValidURL(line)) {
+                    urlQueue.add(line);
+                } else {
+                    System.out.println("Skipping invalid URL: " + line);
+                }
+                }
+            }
+    } catch (IOException e) {
+            System.err.println("Error reading file: " + e.getMessage());
+        }
+    }
+
+    boolean isValidURL(String url) {
+        try {
+            new URL(url).toURI();
+            return true;
+        } catch (Exception e) {
+            System.out.println("Skipping invalid URL: " + url);
+            return false;
+        }
+    }
+
+    void crawl() {
+        try {
+            loadSeeds();
+            while (!urlQueue.isEmpty()) {
+                String url = urlQueue.remove();
+                Document doc = Jsoup.connect(url).get();
+                Elements links = doc.select("a");
+                for (Element link : links) {
+                    String linkURL = link.attr("abs:href");
+                    System.out.println(linkURL);
+                    String normalizedLinkURL = normalizer.normalize(linkURL);
+                    if(normalizedLinkURL == null || normalizedLinkURL.isEmpty() ) continue; {}
+
+                    if (!visitedURLSet.contains(normalizedLinkURL))
+                    {
+                        urlQueue.add(normalizedLinkURL);
+                        visitedURLSet.add(normalizedLinkURL);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            Crawler crawler = new Crawler();
+           crawler.crawl();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
