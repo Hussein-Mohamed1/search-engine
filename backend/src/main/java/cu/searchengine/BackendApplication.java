@@ -29,7 +29,7 @@ public class BackendApplication implements CommandLineRunner {
 		// Print the ranked documents
 		System.out.println("Ranked Documents:");
 		for (RankedDocument doc : rankedResults) {
-			System.out.println(doc.getDocTitle() + " - Score: " + doc.getRelevanceScore());
+			System.out.println(doc.getDocTitle() + " - Score: " + doc.getPopularityScore());
 		}
 	}
 }

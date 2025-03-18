@@ -64,4 +64,15 @@ public class RankedDocument {
     public void setPopularityScore(double popularityScore) {
         PopularityScore = popularityScore;
     }
+    @Override
+    public String toString() {
+        return "RankedDocument{" +
+                "docId=" + docId +
+                ", Title='" + docTitle + '\'' +
+                ", URL='" + url + '\'' +
+                ", Relevance Score=" + RelevanceScore +
+                ", Popularity Score=" + PopularityScore +
+                ", Final Score=" + FinalScore +
+                '}';
+    }
 }
