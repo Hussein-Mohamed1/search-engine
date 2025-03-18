@@ -39,7 +39,7 @@ public class DocumentGenerator {
                     SUBHEADINGS[random.nextInt(SUBHEADINGS.length)]
             );
 
-            String content = generateRandomContent(random);
+            String content = generateRandomContent(random, 10000); // Ensure 500 words per document
 
             documents.add(new Document(i, "https://example.com/doc" + i, title, mainHeading, subHeadings, content,
                     Collections.singletonList("https://example.com")));
@@ -48,9 +48,9 @@ public class DocumentGenerator {
         return documents;
     }
 
-    private static String generateRandomContent(Random random) {
+    private static String generateRandomContent(Random random, int wordCount) {
         StringBuilder content = new StringBuilder();
-        for (int i = 0; i < 50; i++) { // 50 words per document
+        for (int i = 0; i < wordCount; i++) {
             content.append(CONTENT_WORDS[random.nextInt(CONTENT_WORDS.length)]).append(" ");
         }
         return content.toString().trim();
@@ -63,7 +63,7 @@ public class DocumentGenerator {
         // Print first 5 documents for verification
         for (int i = 0; i < 5; i++) {
             System.out.println("Doc " + (i + 1) + " Title: " + documents.get(i).getTitle());
-            System.out.println("Content: " + documents.get(i).getContent());
+            System.out.println("Content (first 100 chars): " + documents.get(i).getContent().substring(0, 100) + "...");
             System.out.println("------------");
         }
     }
