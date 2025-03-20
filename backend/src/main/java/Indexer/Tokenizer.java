@@ -1,16 +1,13 @@
 package Indexer;
 
+import org.tartarus.snowball.ext.PorterStemmer;
 import java.util.*;
 
-import java.lang.Object;
-//import org.apache.
-import org.apache.lucene.analysis.en.PorterStemFilter;
-import org.tartarus.snowball.ext.PorterStemmer;
-//import org.apache.lucene.analysis.ar.ArabicStemmer;
+
 
 
 public class Tokenizer {
-    private static final Set StopWords = Set.of(
+    private static final Set<String> STOP_WORDS = Set.of(
             "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any",
             "are", "aren't", "as", "at", "be", "because", "been", "before", "being", "below",
             "between", "both", "but", "by", "can", "can't", "come", "could", "couldn't", "did",
@@ -33,47 +30,23 @@ public class Tokenizer {
 
     private final PorterStemmer stemmer = new PorterStemmer();
 
-    public Tokenizer() {
-    }
+    public void tokenizeWithPriority(String text, int priority, Map<String, Posting> tokenMap) {
+        text = text.toLowerCase().replaceAll("[^a-zA-Z0-9'\\-]", " ").trim();
+        text = text.replaceAll("\\b\\d+\\b", " "); // Remove numbers
+        String[] words = text.split("\\s+");
 
-    public String StemWord(String word)
-    {
-        //todo
-        //asking the TA if i use built-in library to do the stemmer in an efficent way
+        for (String word : words) {
+            if (word.isEmpty() || STOP_WORDS.contains(word) || word.length() <= 1) continue;
 
-        stemmer.setCurrent(word);
-        stemmer.stem();
-        return stemmer.getCurrent();
+            // Stem the word
+            stemmer.setCurrent(word);
+            stemmer.stem();
+            word = stemmer.getCurrent();
 
-    }
-
-    public  List<String> tokenize(String text) {
-        text = text.toLowerCase();
-        text = text.replaceAll("[^a-zA-Z0-9]", " ").trim();//remove punctuation
-        String []words=text.split(" ");
-//        System.out.println(Arrays.toString(words));
-        List<String>tokens=new ArrayList<>();
-        for(String word:words){
-            if(!StopWords.contains(word)&&word.length()>1){
-                word=StemWord(word).trim();
-                tokens.add(word);
-            }
+            // Update tokenMap without reinitializing it
+            tokenMap.putIfAbsent(word, new Posting());
+            tokenMap.get(word).addPosition(priority); // Adds position & increments TF
         }
-        return tokens;
     }
 
-
-    //only for testing
-    //todo remove this
-     public static void main(String[] args) {
-         String text = "Dr. O'Connor's research on AI-powered bio-tech (e.g., CRISPR-cas9) was groundbreaking! "
-                 + "He stated, \"It's an era of rapid innovation—don't you agree?\" "
-                 + "Meanwhile, at www.research-lab.com, they found a 10x improvement in efficiency. "
-                 + "E-mails like alice@example.com & phone numbers (+1-800-555-0199) aren't easy to handle. "
-                 + "Mathematical expressions (x^2 + y^2 = r^2) & chemical formulas (H2O, C6H12O6) are tricky! "
-                 + "The price was $19.99, and the date was 12/31/2024. Oh, and the 'data.txt' file had weird characters: 😀🔥💡!";
-        Tokenizer tokenizer = new Tokenizer();
-        List<String> tokens = tokenizer.tokenize(text);
-        System.out.println(tokens);
-    }
 }
