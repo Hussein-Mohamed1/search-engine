@@ -1,4 +1,5 @@
-package Crawler;
+package cu.searchengine.backend; //just for the sake of merging
+//package Crawler;  to be uncommented
 
 import com.searchengine.controller.RankerController;
 import com.searchengine.model.RankedDocument;
