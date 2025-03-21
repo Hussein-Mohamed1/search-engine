@@ -40,6 +40,7 @@ public class RankerController {
                 new RankedDocument(3, "http://example.com/doc3", "Search Algorithms", 6, 8, 0)
         ));
     }
+
     public List<RankedDocument> rankDocuments(String[] wordsArray) {
         Map<Integer, RankedDocument> docScoresMap = new HashMap<>();
 

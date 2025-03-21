@@ -4,6 +4,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import utils.ResourceReader;
 
 import java.io.*;
 import java.net.URL;
@@ -11,26 +12,34 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import org.springframework.core.io.DefaultResourceLoader;
+
 
 public class Crawler {
     private static final HashSet<String> visitedURLSet = new HashSet<>();
     private static final URLNormalizer normalizer = new URLNormalizer();
     private static final Queue<String> urlQueue = new LinkedList<>();
-    private static final String seedsFilePath = "/home/tasneem-ahmed/IdeaProjects/search-engine/backend/src/main/resources/static/seeds.txt";
+    private final ResourceReader resourceReader;
+
+    public Crawler() {
+        resourceReader = new ResourceReader(new DefaultResourceLoader());
+    }
+
     void loadSeeds() {
-        try{
-            try(BufferedReader reader = new BufferedReader(new FileReader(seedsFilePath))) {
-                String line;
-                while((line = reader.readLine()) != null){
-                    if (isValidURL(line)) {
+        try {
+            String content = resourceReader.loadResourceAsString("classpath:static/seeds.txt");
+            String[] lines = content.split("\\n");
+            for (String line : lines) {
+                line = line.trim();
+                if (isValidURL(line)) {
                     urlQueue.add(line);
+                    visitedURLSet.add(normalizer.normalize(line));
                 } else {
                     System.out.println("Skipping invalid URL: " + line);
                 }
-                }
             }
-    } catch (IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
+        } catch (Exception ex) {
+            System.err.println("Error reading from classpath: " + ex.getMessage());
         }
     }
 
@@ -55,10 +64,11 @@ public class Crawler {
                     String linkURL = link.attr("abs:href");
                     System.out.println(linkURL);
                     String normalizedLinkURL = normalizer.normalize(linkURL);
-                    if(normalizedLinkURL == null || normalizedLinkURL.isEmpty() ) continue; {}
-
-                    if (!visitedURLSet.contains(normalizedLinkURL))
+                    if (normalizedLinkURL == null || normalizedLinkURL.isEmpty()) continue;
                     {
+                    }
+
+                    if (!visitedURLSet.contains(normalizedLinkURL)) {
                         urlQueue.add(normalizedLinkURL);
                         visitedURLSet.add(normalizedLinkURL);
                     }
@@ -72,8 +82,7 @@ public class Crawler {
     public static void main(String[] args) {
         try {
             Crawler crawler = new Crawler();
-           crawler.crawl();
-
+            crawler.crawl();
         } catch (Exception e) {
             e.printStackTrace();
         }
