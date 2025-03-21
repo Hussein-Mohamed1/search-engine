@@ -1,4 +1,4 @@
-package cu.searchengine.backend;
+package Crawler;
 
 import com.searchengine.controller.RankerController;
 import com.searchengine.model.RankedDocument;
