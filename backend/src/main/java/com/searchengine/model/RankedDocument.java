@@ -1,14 +1,23 @@
 package com.searchengine.model;
 
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Setter
+@Getter
+@Document(collection = "ranking_results")
 public class RankedDocument {
-    private int docId;
+    @Id
+    private String docId;
     private String url;
     private String docTitle;
     private double RelevanceScore;
     private double PopularityScore;
     private double FinalScore;
 
-    public RankedDocument(int docId, String url, String docTitle, double relevanceScore, double popularityScore, double finalScore) {
+    public RankedDocument(String docId, String url, String docTitle, double relevanceScore, double popularityScore, double finalScore) {
         this.docId = docId;
         this.url = url;
         this.docTitle = docTitle;
@@ -16,54 +25,14 @@ public class RankedDocument {
         PopularityScore = popularityScore;
         FinalScore = finalScore;
     }
-
-    public int getDocId() {
-        return docId;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public String getDocTitle() {
-        return docTitle;
-    }
-
-    public double getPopularityScore() {
-        return PopularityScore;
-    }
-
-    public double getRelevanceScore() {
-        return RelevanceScore;
-    }
-
-    public double getFinalScore() {
-        return FinalScore;
-    }
-
-    public void setDocId(int docId) {
-        this.docId = docId;
-    }
-
-    public void setUrl(String url) {
+    public RankedDocument(String url, String docTitle, double relevanceScore, double popularityScore, double finalScore) {
         this.url = url;
-    }
-
-    public void setDocTitle(String docTitle) {
         this.docTitle = docTitle;
-    }
-
-    public void setRelevanceScore(double relevanceScore) {
         RelevanceScore = relevanceScore;
-    }
-
-    public void setFinalScore(double finalScore) {
+        PopularityScore = popularityScore;
         FinalScore = finalScore;
     }
 
-    public void setPopularityScore(double popularityScore) {
-        PopularityScore = popularityScore;
-    }
     @Override
     public String toString() {
         return "RankedDocument{" +

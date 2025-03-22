@@ -35,8 +35,8 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'org.jsoup:jsoup:1.16.2'
     implementation 'org.apache.lucene:lucene-analyzers-common:8.11.2'
-    implementation 'org.apache.lucene:lucene-core:9.7.0'
-    implementation 'org.springframework:spring-core:5.3.20'
+    implementation 'org.apache.lucene:lucene-core:8.11.2'
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
 }
 
 tasks.named('test') {
