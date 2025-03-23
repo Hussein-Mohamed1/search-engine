@@ -1,6 +1,6 @@
 package cu.searchengine.Indexer;
 
-import cu.searchengine.model.Document;
+import cu.searchengine.model.Documents;
 import cu.searchengine.utils.Tokenizer;
 
 import java.util.*;
@@ -13,16 +13,16 @@ public class BuildInvertedIndex {
         return invertedIndex;
     }
 
-    public BuildInvertedIndex(List<Document> listOfDocuments) {
-        for (Document doc : listOfDocuments) {
+    public BuildInvertedIndex(List<Documents> listOfDocuments) {
+        for (Documents doc : listOfDocuments) {
             int docId = doc.getId();
             Map<String, Posting> tokenizedWords = new HashMap<>();
 
             // Tokenize each section with its priority position
-            processText(doc.getTitle(), docId, 4,tokenizedWords);      // Title (4)
-            processText(doc.getMainHeading(), docId, 3,tokenizedWords); // Main Heading (3)
-            processText(String.join(" ", doc.getSubHeading()), docId, 2,tokenizedWords); // Subheading (2)
-            processText(doc.getContent(), docId, 1,tokenizedWords);    // Content (1)
+            processText(doc.getTitle(), docId, 4, tokenizedWords);      // Title (4)
+            processText(doc.getMainHeading(), docId, 3, tokenizedWords); // Main Heading (3)
+            processText(String.join(" ", doc.getSubHeadings()), docId, 2, tokenizedWords); // Subheading (2)
+            processText(doc.getContent(), docId, 1, tokenizedWords);    // Content (1)
 
             for (Map.Entry<String, Posting> entry : tokenizedWords.entrySet()) {
                 String word = entry.getKey();
@@ -37,7 +37,6 @@ public class BuildInvertedIndex {
         }
 
 
-
         // Update DF after processing all documents
         for (PostingData postingData : invertedIndex.values()) {
             postingData.updateDf();
@@ -48,7 +47,7 @@ public class BuildInvertedIndex {
         if (text == null || text.isEmpty()) return;
 
         // Tokenize and track priority-based positions
-       tokenizer.tokenizeWithPriority(text, priority,tokenizedWords);
+        tokenizer.tokenizeWithPriority(text, priority, tokenizedWords);
     }
 
     public Map<Integer, Posting> getPostings(String word) {

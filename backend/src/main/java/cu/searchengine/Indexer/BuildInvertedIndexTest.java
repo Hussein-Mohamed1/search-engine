@@ -1,7 +1,7 @@
 package cu.searchengine.Indexer;
 
 
-import cu.searchengine.model.Document;
+import cu.searchengine.model.Documents;
 import java.util.*;
 
 import static cu.searchengine.Indexer.DocumentGenerator.generateDocuments;
@@ -9,7 +9,7 @@ import static cu.searchengine.Indexer.DocumentGenerator.generateDocuments;
 public class BuildInvertedIndexTest {
     public static void main(String[] args) {
         // Create sample documents
-        List<Document> documents = new ArrayList<>();
+        List<Documents> documents = new ArrayList<>();
 
         documents.addAll( generateDocuments(10000));
 

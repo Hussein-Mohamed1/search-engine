@@ -40,8 +40,17 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
 //    implementation 'edu.stanford.nlp:stanford-corenlp:4.5.8'
 //    implementation "edu.stanford.nlp:stanford-corenlp:4.5.8:models"
+
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
 }
