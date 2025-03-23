@@ -22,5 +22,12 @@ public class PostingData {
     public void updateDf() {
         this.df = postings.size(); // DF = Number of unique documents
     }
+
+    public void merge(PostingData other) {
+        for (Map.Entry<Integer, Posting> entry : other.getPostings().entrySet()) {
+            postings.putIfAbsent(entry.getKey(), entry.getValue()); // Merge postings
+        }
+        updateDf(); // Update document frequency after merging
+    }
 }
 
