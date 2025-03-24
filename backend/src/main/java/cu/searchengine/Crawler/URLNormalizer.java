@@ -40,7 +40,8 @@ public class URLNormalizer {
             }
             return normalizedURL;
         } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("Invalid URL: " + rawURL);
+           System.out.println("Invalid URL: " + rawURL);
+           return "";
         }
     }
 
