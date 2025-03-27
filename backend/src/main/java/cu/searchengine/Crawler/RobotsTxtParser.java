@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.lang.reflect.Array;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,8 +13,15 @@ import java.util.List;
 
 public class RobotsTxtParser {
     //each user agent with a list of it's prohibited paths  Domain ->(userAgent, disallowedPaths)
-    private final HashMap<String, HashMap<String, List<String>>> disallowedPolicyMap = new HashMap<>();
-    private final HashMap<String, HashMap<String, List<String>>> allowedPolicyMap = new HashMap<>();
+    private final HashMap<String, HashMap<String, List<String>>> disallowedPolicyMap;
+    private final HashMap<String, HashMap<String, List<String>>> allowedPolicyMap;
+    private final HashMap<String,Boolean> robotsTxtLoaded;
+
+    public RobotsTxtParser() {
+        disallowedPolicyMap = new HashMap<>();
+        allowedPolicyMap = new HashMap<>();
+        robotsTxtLoaded = new HashMap<>();
+    }
 
     // checks if a path can be crawled
     public boolean isAllowed(String fullURL, String userAgent) {
@@ -86,6 +94,12 @@ public class RobotsTxtParser {
         return isAllowedCarwling;
     }
 
+    public boolean isLoaded(String url) {
+        URI uri = URI.create(url);
+        String domain = uri.getHost();
+        return robotsTxtLoaded.getOrDefault(domain, false);
+    }
+
     // adds a rule to a certain domain of a certain agent
     public void addPolicy(String domain, String userAgent, String rule, String policy) {
         if (policy.equalsIgnoreCase("disallow")) {
@@ -143,6 +157,7 @@ public class RobotsTxtParser {
                     //to keep track of user agents group
                     previousLineEmpty = line.isEmpty();
                 }
+                robotsTxtLoaded.put(domain, true);
             }
         } catch (Exception e) {
             System.out.println("Error loading robots.txt file " + e.getMessage());
