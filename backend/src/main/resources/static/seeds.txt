@@ -1,5 +1,1 @@
-https://example0.com/
-https://example1.com/
-https://example2.com/
-https://example3.com/
-https://example4.com/
+https://docs.python.org/3/tutorial/
