@@ -3,6 +3,6 @@ package cu.searchengine.Search;
 import org.springframework.stereotype.Service;
 
 @Service
-public class SearchService {
+public class SearchService1 {
 
 }

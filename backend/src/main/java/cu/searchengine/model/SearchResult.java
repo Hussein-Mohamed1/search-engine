@@ -1,20 +1,30 @@
 package cu.searchengine.model;
 
-import java.util.Comparator;
-import java.util.PriorityQueue;
+import java.util.List;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+@Document(collection = "search_results")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SearchResult {
-    private final PriorityQueue<RankedDocument> rankedDocuments = new PriorityQueue<>(Comparator.comparingDouble(RankedDocument::getFinalScore).reversed());
 
-    public boolean addDocument(RankedDocument document) {
-        return rankedDocuments.offer(document);
-    }
+    @Id
+    private String id;
 
-    public RankedDocument getTopDocument() {
-        return rankedDocuments.poll();
-    }
+    private String query;
 
-    public PriorityQueue<RankedDocument> getRankedDocuments() {
-        return rankedDocuments;
-    }
+    private List<RankedDocument> results;
+
+    private long timestamp;
 }

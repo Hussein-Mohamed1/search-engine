@@ -77,22 +77,22 @@ public class RankerController {
                 }
             }
         }
-        System.out.println("Ranked Documents List:");
-        System.out.println("----------------------before----------------------------------");
-        for (Map.Entry<Integer, RankedDocument> entry : docScoresMap.entrySet()) {
-            System.out.println("Doc ID: " + entry.getKey() + " -> " + entry.getValue().toString());
-        }
-        System.out.println("--------------------------------------------------------");
+//        System.out.println("Ranked Documents List:");
+//        System.out.println("----------------------before----------------------------------");
+//        for (Map.Entry<Integer, RankedDocument> entry : docScoresMap.entrySet()) {
+//            System.out.println("Doc ID: " + entry.getKey() + " -> " + entry.getValue().toString());
+//        }
+//        System.out.println("--------------------------------------------------------");
 
         docScoresMap = popularityScorer.calculatePopularityScores(docScoresMap);
 
 
-        System.out.println("Ranked Documents List:");
-        System.out.println("------------------------After--------------------------------");
-        for (Map.Entry<Integer, RankedDocument> entry : docScoresMap.entrySet()) {
-            System.out.println("Doc ID: " + entry.getKey() + " -> " + entry.getValue().toString());
-        }
-        System.out.println("--------------------------------------------------------");
+//        System.out.println("Ranked Documents List:");
+//        System.out.println("------------------------After--------------------------------");
+//        for (Map.Entry<Integer, RankedDocument> entry : docScoresMap.entrySet()) {
+//            System.out.println("Doc ID: " + entry.getKey() + " -> " + entry.getValue().toString());
+//        }
+//        System.out.println("--------------------------------------------------------");
 
 
         for(RankedDocument doc : docScoresMap.values()){
