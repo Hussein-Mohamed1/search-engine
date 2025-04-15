@@ -16,7 +16,9 @@ public class RankedDocument {
     private double RelevanceScore;
     private double PopularityScore;
     private double FinalScore;
-
+    public RankedDocument() {
+        // Required by Spring Data
+    }
     public RankedDocument(String docId, String url, String docTitle, double relevanceScore, double popularityScore, double finalScore) {
         this.docId = docId;
         this.url = url;
