@@ -13,7 +13,7 @@ import java.util.List;
 @Document(collection = "documents")
 public class Documents implements Comparable<Documents> {
     @Id
-    private int id; // Unique identifier for the document
+    private Integer id; // Unique identifier for the document
 
     @Indexed(unique = true)
     private String url;
