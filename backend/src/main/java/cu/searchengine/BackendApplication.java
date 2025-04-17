@@ -1,65 +1,30 @@
-//package Crawler;
-//
-//import com.searchengine.controller.RankerController;
-//import com.searchengine.model.RankedDocument;
-//import org.springframework.boot.CommandLineRunner;
-//import org.springframework.boot.SpringApplication;
-//import org.springframework.boot.autoconfigure.SpringBootApplication;
-//
-//import java.util.List;
-//
-//@SpringBootApplication
-//public class BackendApplication implements CommandLineRunner {
-//
-//    public static void main(String[] args) {
-//        SpringApplication.run(BackendApplication.class, args);
-//    }
-//
-//	@Override
-//	public void run(String... args) throws Exception {
-//		// Initialize RankerController with a total document count of 100
-//		RankerController ranker = new RankerController(100);
-//
-//		// Define query words
-//		String[] queryWords = {"java", "search"};
-//
-//		// Get ranked results
-//		List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
-//
-//		// Print the ranked documents
-//		System.out.println("Ranked Documents:");
-//		for (RankedDocument doc : rankedResults) {
-//			System.out.println(doc.getDocTitle() + " - Score: " + doc.getPopularityScore());
-//		}
-//	}
-//}
-
-
-
-// Ranker Test
-
 package cu.searchengine;
 
-import com.searchengine.controller.RankerController;
-import com.searchengine.model.RankedDocument;
-import com.searchengine.service.RankingService;
+import java.util.List;
+
+import cu.searchengine.model.SearchResult;
+import cu.searchengine.service.SearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
-import java.util.List;
+import cu.searchengine.controller.RankerController;
+import cu.searchengine.model.RankedDocument;
+import cu.searchengine.service.RankingService;
 
-@SpringBootApplication(scanBasePackages = {"cu.searchengine", "com.searchengine"})
-@EnableMongoRepositories(basePackages = "com.searchengine.repository")
+@SpringBootApplication(scanBasePackages = {"cu.searchengine"})
+@EnableMongoRepositories(basePackages = "cu.searchengine.repository")
 public class BackendApplication implements CommandLineRunner {
 	private final RankingService rankingService;
+	private final SearchService searchService;
 
 	@Autowired
-	public BackendApplication(RankingService rankingService) {
+	public BackendApplication(RankingService rankingService, SearchService searchService) {
 		this.rankingService = rankingService;
-	}
+        this.searchService = searchService;
+    }
 
 	public static void main(String[] args) {
 		SpringApplication.run(BackendApplication.class, args);
@@ -72,15 +37,40 @@ public class BackendApplication implements CommandLineRunner {
 
 		// Define query words
 		String[] queryWords = {"java", "search"};
+		String[] queryWords2 = {"java", "ranking"};
 
 		// Get ranked results
-		List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
-
+//		List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
+//		List<RankedDocument> rankedResults2 = ranker.rankDocuments(queryWords2);
+//		SearchResult result1 = SearchResult.builder()
+//				.query("java Search")
+//				.results(rankedResults)
+//				.timestamp(System.currentTimeMillis())
+//				.build();
+//		searchService.saveSearchResult(result1);
+//		SearchResult result2 = SearchResult.builder()
+//				.query("java ranking")
+//				.results(rankedResults2)
+//				.timestamp(System.currentTimeMillis())
+//				.build();
+//		searchService.saveSearchResult(result2);
 		// Print the ranked documents
-		System.out.println("Ranked Documents:");
-		for (RankedDocument doc : rankedResults) {
-			System.out.println(doc.getDocTitle() + " - Score: " + doc.getPopularityScore());
-			rankingService.saveRanking(doc.getUrl() , doc.getDocTitle() , doc.getRelevanceScore() , doc.getPopularityScore() , doc.getFinalScore());
+		List<SearchResult> res = searchService.getResultsByQuery("java Search");
+		System.out.println("size : " + res.size());
+		for (SearchResult result : res) {
+			System.out.println("Query: " + result.getQuery());
+			System.out.println("Timestamp: " + new java.util.Date(result.getTimestamp()));
+			System.out.println("Results:");
+
+			for (RankedDocument doc : result.getResults()) {
+				System.out.println("   └ Title: " + doc.getDocTitle());
+				System.out.println("     URL: " + doc.getUrl());
+				System.out.println("     Score: " + doc.getFinalScore());
+				System.out.println();
+			}
+
+			System.out.println("------------------------------------------------------------");
 		}
+
 	}
 }
