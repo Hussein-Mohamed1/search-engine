@@ -1,6 +1,6 @@
 package cu.searchengine.Indexer;
 
-import cu.searchengine.model.Documents;
+import cu.searchengine.model.Document;
 
 import java.util.*;
 
@@ -28,8 +28,8 @@ public class DocumentGenerator {
             "network", "speed", "accuracy", "deep", "neural", "processing", "search", "query"
     };
 
-    public static List<Documents> generateDocuments(int count) {
-        List<Documents> documents = new ArrayList<>();
+    public static List<Document> generateDocuments(int count) {
+        List<Document> documents = new ArrayList<>();
         Random random = new Random();
 
         for (int i = 1; i <= count; i++) {
@@ -42,7 +42,7 @@ public class DocumentGenerator {
 
             String content = generateRandomContent(random, 10000); // Ensure 500 words per document
 
-            documents.add(new Documents(i, "https://example.com/doc" + i, title, mainHeading, subHeadings, content,
+            documents.add(new Document(i, "https://example.com/doc" + i, title, mainHeading, subHeadings, content,
                     Collections.singletonList("https://example.com")));
         }
 
@@ -58,7 +58,7 @@ public class DocumentGenerator {
     }
 
     public static void main(String[] args) {
-        List<Documents> documents = generateDocuments(200);
+        List<Document> documents = generateDocuments(200);
         System.out.println("Generated " + documents.size() + " documents.");
 
         // Print first 5 documents for verification

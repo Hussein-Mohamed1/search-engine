@@ -1,12 +1,12 @@
-package Indexer;
+package cu.searchengine.Indexer;
 
-import Tests.Indexer.DocumentGenerator;
-import model.Document;
+import cu.searchengine.Indexer.DocumentGenerator;
+import cu.searchengine.model.Document;
 
 import java.util.ArrayList;
 import java.util.List;
-import static Tests.Indexer.DocumentGenerator.generateDocuments;
-import Indexer.ThreadPool;
+import static cu.searchengine.Indexer.DocumentGenerator.generateDocuments;
+import cu.searchengine.Indexer.ThreadPool;
 
 
 public class mainIndexer {

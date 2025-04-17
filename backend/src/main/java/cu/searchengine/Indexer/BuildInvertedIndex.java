@@ -1,6 +1,9 @@
-package Indexer;
+package cu.searchengine.Indexer;
 
-import model.Document;
+import cu.searchengine.model.Document;
+import cu.searchengine.utils.Tokenizer;
+import cu.searchengine.Indexer.PostingData;
+import cu.searchengine.Indexer.Posting;
 import java.util.*;
 
 public class BuildInvertedIndex {
