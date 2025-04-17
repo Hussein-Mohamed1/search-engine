@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 public class ThreadPool {
     private final List<Document> docs;
     private final ConcurrentHashMap<String, PostingData> globalIndex = new ConcurrentHashMap<>();
+    private final Tokenizer tokenizer = new Tokenizer();
+
 
 
     public ThreadPool(List<Document> docs) {
@@ -30,7 +32,7 @@ public class ThreadPool {
         for (int i = 0; i < docs.size(); i += batchSize) {
             int end = Math.min(i + batchSize, docs.size());
             List<Document> batch = docs.subList(i, end);
-            executor.execute(new DocumentProcessorTask(batch, globalIndex));
+            executor.execute(new DocumentProcessorTask(batch, globalIndex,tokenizer));
         }
 
         executor.shutdown();
@@ -47,15 +49,15 @@ public class ThreadPool {
     private static class DocumentProcessorTask implements Runnable {
         private final List<Document> documents;
         private final Map<String, PostingData> globalIndex;
-
-        public DocumentProcessorTask(List<Document> documents, Map<String, PostingData> globalIndex) {
+        public DocumentProcessorTask(List<Document> documents, Map<String, PostingData> globalIndex,Tokenizer tokenize) {
             this.documents = documents;
             this.globalIndex = globalIndex;
+
         }
 
         @Override
         public void run() {
-            BuildInvertedIndex localIndex = new BuildInvertedIndex(documents); // Build index for batch
+            BuildInvertedIndex localIndex = new BuildInvertedIndex(documents,new Tokenizer()); // Build index for batch
 
             synchronized (globalIndex) {
                 for (Map.Entry<String, PostingData> entry : localIndex.getInvertedIndex().entrySet()) {

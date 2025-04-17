@@ -5,22 +5,24 @@ import java.util.*;
 
 public class BuildInvertedIndex {
     private final Map<String, PostingData> invertedIndex = new HashMap<>();
-    private final Tokenizer tokenizer = new Tokenizer();
+    Tokenizer tokenizer;
+
 
     public Map<String, PostingData> getInvertedIndex() {
         return invertedIndex;
     }
 
-    public BuildInvertedIndex(List<Document> listOfDocuments) {
+    public BuildInvertedIndex(List<Document> listOfDocuments,Tokenizer tokenizer) {
+        this.tokenizer=tokenizer;
         for (Document doc : listOfDocuments) {
             int docId = doc.getId();
             Map<String, Posting> tokenizedWords = new HashMap<>();
 
             // Tokenize each section with its priority position
-            processText(doc.getTitle(), docId, 4,tokenizedWords);      // Title (4)
-            processText(doc.getMainHeading(), docId, 3,tokenizedWords); // Main Heading (3)
-            processText(String.join(" ", doc.getSubHeading()), docId, 2,tokenizedWords); // Subheading (2)
-            processText(doc.getContent(), docId, 1,tokenizedWords);    // Content (1)
+            processText(doc.getTitle(), docId, 4,tokenizedWords,tokenizer);      // Title (4)
+            processText(doc.getMainHeading(), docId, 3,tokenizedWords,tokenizer); // Main Heading (3)
+            processText(String.join(" ", doc.getSubHeading()), docId, 2,tokenizedWords,tokenizer); // Subheading (2)
+            processText(doc.getContent(), docId, 1,tokenizedWords,tokenizer);    // Content (1)
 
             for (Map.Entry<String, Posting> entry : tokenizedWords.entrySet()) {
                 String word = entry.getKey();
@@ -42,7 +44,7 @@ public class BuildInvertedIndex {
         }
     }
 
-    private void processText(String text, int docId, int priority, Map<String, Posting> tokenizedWords) {
+    private void processText(String text, int docId, int priority, Map<String, Posting> tokenizedWords,Tokenizer tokenizer) {
         if (text == null || text.isEmpty()) return;
 
         // Tokenize and track priority-based positions
