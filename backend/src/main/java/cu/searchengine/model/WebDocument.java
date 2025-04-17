@@ -1,9 +1,8 @@
 package cu.searchengine.model;
 
 import java.util.List;
-import java.util.UUID;
 
-public class Document implements Comparable<Document> {
+public class WebDocument implements Comparable<WebDocument> {
     private int id; // Unique identifier for the document
     private String url;
     private String title;
@@ -12,7 +11,7 @@ public class Document implements Comparable<Document> {
     private String content;
     private List<String> Links;
 
-    public Document(int id, String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
+    public WebDocument(int id, String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
         this.id = id;
         this.url = url;
         this.title = title;
@@ -23,7 +22,7 @@ public class Document implements Comparable<Document> {
     }
 
     // Alternative constructor for auto-generating IDs
-    public Document(String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
+    public WebDocument(String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
         this.id = url.hashCode(); // Generate ID based on URL (ensures consistency)
         this.url = url;
         this.title = title;
@@ -90,7 +89,7 @@ public class Document implements Comparable<Document> {
     }
 
     @Override
-    public int compareTo(Document o)
+    public int compareTo(WebDocument o)
     {
         return this.title.compareTo(o.getTitle());//sort by title
     }

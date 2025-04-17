@@ -6,9 +6,12 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import cu.searchengine.utils.ResourceReader;
+import cu.searchengine.model.WebDocument;
 
 import java.io.*;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -24,6 +27,7 @@ public class Crawler implements Runnable {
     private final int MAX_PAGE_COUNT;
     private final AtomicInteger currentPage;
     private final ExecutorService executorService;
+    private final List<WebDocument> webDocuments;
 
     public Crawler(String userAgent, int pgCount, int numberOfThreads) {
         this.userAgent = userAgent;
@@ -35,6 +39,7 @@ public class Crawler implements Runnable {
         this.robotsParser = new RobotsTxtParser();
         this.resourceReader = new ResourceReader(new DefaultResourceLoader());
         this.executorService = Executors.newFixedThreadPool(numberOfThreads);
+        this.webDocuments = new ArrayList<>();
 
         loadSeeds();
     }
@@ -68,7 +73,7 @@ public class Crawler implements Runnable {
                     return;
                 }
 
-                processPage(url);
+                processPage(normalizedURL);
 
             } catch (Exception e) {
                 System.out.println(threadName + " - Error: " + e.getMessage());
@@ -128,8 +133,54 @@ public class Crawler implements Runnable {
         }
     }
 
+    private void parseDocument(Document doc) {
+        System.out.println(" - Parsing " + doc.title());
+        String title = doc.title();
+        String url = doc.baseUri();
+        String mainHeading = doc.select("h1").text();
+        List<String> subHeadings = new ArrayList<>();
+        List<String> links = new ArrayList<>();
+
+        Elements headers = doc.select("h2, h3, h4, h5, h6");
+
+        for (Element header : headers) {
+            subHeadings.add(header.text());
+        }
+
+        Elements linkElements = doc.select("a");
+        for (Element link : linkElements) {
+            String linkURL = link.attr("href");
+
+            if (!link.attr("href").contains("http"))
+                linkURL = doc.baseUri() + link.attr("href");
+
+            // todo handle 404 pages
+            links.add(linkURL);
+        }
+
+
+        String content = doc.select("div, p").text();
+        webDocuments.add(new WebDocument(url, title, mainHeading, subHeadings, content, links));
+
+        //========> testing
+        System.out.println("title:" + title);
+        System.out.println(" - Parsing " + url);
+        System.out.println("mainHeading:" + mainHeading);
+        System.out.println("subHeadings:" + subHeadings);
+        System.out.println("links:" + links);
+//        System.out.print(" - Parsing " + content);
+
+    }
+
+    //todo should i add @Getter
+    public List<WebDocument> getWebDocuments() {
+        return webDocuments;
+    }
+
+
     private void processPage(String url) throws IOException {
         Document doc = Jsoup.connect(url).timeout(2000).get();
+        parseDocument(doc);
         System.out.println("Thread " + Thread.currentThread().getName() + "======> Crawling URL: " + url);
 
         Elements links = doc.select("a");
@@ -173,11 +224,19 @@ public class Crawler implements Runnable {
 
     public static void main(String[] args) {
         int numberOfThreads = Runtime.getRuntime().availableProcessors() * 2;
-        System.out.println("Number of threads: " + numberOfThreads);
+//        System.out.println("Number of threads: " + numberOfThreads);
         Crawler crawler = new Crawler("nemo", 200, numberOfThreads);
 
-        crawler.crawl();
-        crawler.print();
+        Document doc = null;
+        try {
+            doc = Jsoup.connect("https://spring.io/projects/spring-boot").timeout(2000).get();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        crawler.parseDocument(doc);
+//        crawler.crawl();
+//        crawler.print();
+
     }
 }
 

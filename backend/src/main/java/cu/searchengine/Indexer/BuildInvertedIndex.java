@@ -1,9 +1,8 @@
 package cu.searchengine.Indexer;
 
-import cu.searchengine.model.Document;
+import cu.searchengine.model.WebDocument;
 import cu.searchengine.utils.Tokenizer;
-import cu.searchengine.Indexer.PostingData;
-import cu.searchengine.Indexer.Posting;
+
 import java.util.*;
 
 public class BuildInvertedIndex {
@@ -15,9 +14,9 @@ public class BuildInvertedIndex {
         return invertedIndex;
     }
 
-    public BuildInvertedIndex(List<Document> listOfDocuments,Tokenizer tokenizer) {
+    public BuildInvertedIndex(List<WebDocument> listOfDocuments, Tokenizer tokenizer) {
         this.tokenizer=tokenizer;
-        for (Document doc : listOfDocuments) {
+        for (WebDocument doc : listOfDocuments) {
             int docId = doc.getId();
             Map<String, Posting> tokenizedWords = new HashMap<>();
 
