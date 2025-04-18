@@ -149,17 +149,6 @@ public class Crawler implements Runnable {
         if (pages404.get(url) != null) return;
 
         String content = doc.select("div, p").text();
-      
-        webDocuments.add(new WebDocument(url, title, mainHeading, subHeadings, content, links));
-        documentService.add(new Documents(url, title, mainHeading, subHeadings, content, links));
-
-        //========> testing
-        System.out.println("title:" + title);
-        System.out.println(" - Parsing " + url);
-        System.out.println("mainHeading:" + mainHeading);
-        System.out.println("subHeadings:" + subHeadings);
-        System.out.println("links:" + links);
-//        System.out.print(" - Parsing " + content);
 
         List<String> mainHeadings = doc.select("h1").parallelStream()
                 .map(Element::text)
@@ -173,7 +162,7 @@ public class Crawler implements Runnable {
                 .map(link -> {
                     String linkURL = link.attr("href");
                     if (!linkURL.startsWith("http")) {
-                        linkURL = doc.baseUri() + linkURL; // Resolve relative links
+                        linkURL = doc.baseUri() + linkURL;
                     }
                     return linkURL;
                 })
@@ -183,9 +172,10 @@ public class Crawler implements Runnable {
         synchronized (webDocuments) {
             webDocuments.add(new WebDocument(url, title, mainHeadings.get(0), subHeadings, content, links));
         }
+
+        documentService.add(new Documents(url, title, mainHeadings.get(0), subHeadings, content, links));
     }
 
-    //todo should i add @Getter
     public List<WebDocument> getWebDocuments() {
         return webDocuments;
     }
@@ -259,5 +249,3 @@ public class Crawler implements Runnable {
 
     }
 }
-
-
