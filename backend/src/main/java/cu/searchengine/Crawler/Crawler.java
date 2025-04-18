@@ -14,6 +14,7 @@ import cu.searchengine.model.WebDocument;
 import java.io.*;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,6 +32,7 @@ public class Crawler implements Runnable {
     private final AtomicInteger currentPage;
     private final ExecutorService executorService;
     private final List<WebDocument> webDocuments;
+    private final HashMap<String, Boolean> pages404;
     private final DocumentService documentService;
 
     public Crawler(String userAgent, int pgCount, int numberOfThreads, DocumentService doucumentService) {
@@ -45,6 +47,7 @@ public class Crawler implements Runnable {
         this.resourceReader = new ResourceReader(new DefaultResourceLoader());
         this.executorService = Executors.newFixedThreadPool(numberOfThreads);
         this.webDocuments = new ArrayList<>();
+        this.pages404 = new HashMap<>();
 
         loadSeeds();
     }
@@ -120,14 +123,15 @@ public class Crawler implements Runnable {
             Connection.Response response = Jsoup.connect(url).method(Connection.Method.HEAD).timeout(2000).execute();
             int statusCode = response.statusCode();
             if (statusCode >= 200 && statusCode < 400) {
-                System.out.println("URL is accessible. status: " + statusCode);
+//                System.out.println("URL is accessible. status: " + statusCode);
                 return true;
             } else {
-                System.out.println("URL is not accessible. Status: " + statusCode);
+//                System.out.println("URL is not accessible. Status: " + statusCode);
+                pages404.put(url, true);
                 return false;
             }
         } catch (IOException e) {
-            System.out.println("Error during HEAD request: " + e.getMessage());
+//            System.out.println("Error during HEAD request: " + e.getMessage());
             return false;
         }
     }
@@ -139,47 +143,40 @@ public class Crawler implements Runnable {
     }
 
     private void parseDocument(Document doc) {
-        System.out.println(" - Parsing " + doc.title());
         String title = doc.title();
         String url = doc.baseUri();
-        String mainHeading = doc.select("h1").text();
-        List<String> subHeadings = new ArrayList<>();
-        List<String> links = new ArrayList<>();
 
-        Elements headers = doc.select("h2, h3, h4, h5, h6");
-
-        for (Element header : headers) {
-            subHeadings.add(header.text());
-        }
-
-        Elements linkElements = doc.select("a");
-        for (Element link : linkElements) {
-            String linkURL = link.attr("href");
-
-            if (!link.attr("href").contains("http"))
-                linkURL = doc.baseUri() + link.attr("href");
-
-            // todo handle 404 pages
-            links.add(linkURL);
-        }
-
+        if (pages404.get(url) != null) return;
 
         String content = doc.select("div, p").text();
-        webDocuments.add(new WebDocument(url, title, mainHeading, subHeadings, content, links));
-        documentService.add(new Documents(url, title, mainHeading, subHeadings, content, links));
 
 
-        //========> testing
-        System.out.println("title:" + title);
-        System.out.println(" - Parsing " + url);
-        System.out.println("mainHeading:" + mainHeading);
-        System.out.println("subHeadings:" + subHeadings);
-        System.out.println("links:" + links);
-//        System.out.print(" - Parsing " + content);
+        List<String> mainHeadings = doc.select("h1").parallelStream()
+                .map(Element::text)
+                .toList();
 
+        List<String> subHeadings = doc.select("h2, h3, h4, h5, h6").parallelStream()
+                .map(Element::text)
+                .toList();
+
+        List<String> links = doc.select("a").parallelStream()
+                .map(link -> {
+                    String linkURL = link.attr("href");
+                    if (!linkURL.startsWith("http")) {
+                        linkURL = doc.baseUri() + linkURL;
+                    }
+                    return linkURL;
+                })
+                .toList();
+
+        // todo modify mainheading in webdocument file to be a list
+        synchronized (webDocuments) {
+            webDocuments.add(new WebDocument(url, title, mainHeadings.get(0), subHeadings, content, links));
+        }
+
+        documentService.add(new Documents(url, title, mainHeadings.get(0), subHeadings, content, links));
     }
 
-    //todo should i add @Getter
     public List<WebDocument> getWebDocuments() {
         return webDocuments;
     }
@@ -227,6 +224,9 @@ public class Crawler implements Runnable {
         System.out.println("PageCount: " + currentPage.get());
         System.out.println("URLQueue: " + urlQueue.size());
         System.out.println("VisitedURLSet: " + visitedURLSet.size());
+        for (WebDocument webDocument : webDocuments) {
+            System.out.println(webDocument);
+        }
     }
 
     public static void main(String[] args) {
@@ -236,17 +236,17 @@ public class Crawler implements Runnable {
         DocumentService documentService1 = new DocumentService(documentsRepository);
         Crawler crawler = new Crawler("nemo", 200, numberOfThreads , documentService1);
 
-        Document doc = null;
-        try {
-            doc = Jsoup.connect("https://spring.io/projects/spring-boot").timeout(2000).get();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        crawler.parseDocument(doc);
-//        crawler.crawl();
-//        crawler.print();
+//        Document doc = null;
+//        try {
+//            doc = Jsoup.connect("https://spring.io").timeout(2000).get();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+//        crawler.parseDocument(doc);
+
+        crawler.crawl();
+        System.out.println("\n========================================CRAWLER END===============================================\n");
+        crawler.print();
 
     }
 }
-
-
