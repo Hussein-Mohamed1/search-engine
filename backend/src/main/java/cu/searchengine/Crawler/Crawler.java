@@ -168,6 +168,7 @@ public class Crawler implements Runnable {
         webDocuments.add(new WebDocument(url, title, mainHeading, subHeadings, content, links));
         documentService.add(new Documents(url, title, mainHeading, subHeadings, content, links));
 
+
         //========> testing
         System.out.println("title:" + title);
         System.out.println(" - Parsing " + url);
