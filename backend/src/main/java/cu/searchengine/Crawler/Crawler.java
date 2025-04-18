@@ -1,5 +1,8 @@
 package cu.searchengine.Crawler;
 
+import cu.searchengine.model.Documents;
+import cu.searchengine.repository.DocumentsRepository;
+import cu.searchengine.service.DocumentService;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -30,10 +33,12 @@ public class Crawler implements Runnable {
     private final ExecutorService executorService;
     private final List<WebDocument> webDocuments;
     private final HashMap<String, Boolean> pages404;
+    private final DocumentService documentService;
 
-    public Crawler(String userAgent, int pgCount, int numberOfThreads) {
+    public Crawler(String userAgent, int pgCount, int numberOfThreads, DocumentService doucumentService) {
         this.userAgent = userAgent;
         this.MAX_PAGE_COUNT = pgCount;
+        this.documentService = doucumentService;
         this.currentPage = new AtomicInteger(0);
         this.visitedURLSet = new ConcurrentHashMap<>();
         this.urlQueue = new LinkedBlockingQueue<>();
@@ -144,6 +149,17 @@ public class Crawler implements Runnable {
         if (pages404.get(url) != null) return;
 
         String content = doc.select("div, p").text();
+      
+        webDocuments.add(new WebDocument(url, title, mainHeading, subHeadings, content, links));
+        documentService.add(new Documents(url, title, mainHeading, subHeadings, content, links));
+
+        //========> testing
+        System.out.println("title:" + title);
+        System.out.println(" - Parsing " + url);
+        System.out.println("mainHeading:" + mainHeading);
+        System.out.println("subHeadings:" + subHeadings);
+        System.out.println("links:" + links);
+//        System.out.print(" - Parsing " + content);
 
         List<String> mainHeadings = doc.select("h1").parallelStream()
                 .map(Element::text)
@@ -225,7 +241,9 @@ public class Crawler implements Runnable {
     public static void main(String[] args) {
         int numberOfThreads = Runtime.getRuntime().availableProcessors() * 2;
 //        System.out.println("Number of threads: " + numberOfThreads);
-        Crawler crawler = new Crawler("nemo", 200, numberOfThreads);
+        DocumentsRepository documentsRepository = null;
+        DocumentService documentService1 = new DocumentService(documentsRepository);
+        Crawler crawler = new Crawler("nemo", 200, numberOfThreads , documentService1);
 
 //        Document doc = null;
 //        try {
