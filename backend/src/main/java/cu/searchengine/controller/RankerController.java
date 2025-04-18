@@ -9,6 +9,7 @@ import java.util.Map;
 import cu.searchengine.model.RankedDocument;
 import cu.searchengine.ranker.PopularityScorer;
 import cu.searchengine.ranker.RelevanceScorer;
+import cu.searchengine.service.DocumentService;
 
 public class RankerController {
     private RelevanceScorer relevanceScorer;
@@ -19,9 +20,9 @@ public class RankerController {
     // Dummy Inverted Index Data for Testing
     private Map<String, List<RankedDocument>> invertedIndexData;
 
-    public RankerController(int totalDocuments) {
+    public RankerController(int totalDocuments , DocumentService documentServices) {
         relevanceScorer = new RelevanceScorer(totalDocuments);
-         popularityScorer = new PopularityScorer();
+         popularityScorer = new PopularityScorer(documentServices);
 
         // Initialize Dummy Data
         invertedIndexData = new HashMap<>();

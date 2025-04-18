@@ -150,6 +150,7 @@ public class Crawler implements Runnable {
 
         String content = doc.select("div, p").text();
 
+
         List<String> mainHeadings = doc.select("h1").parallelStream()
                 .map(Element::text)
                 .toList();

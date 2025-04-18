@@ -1,6 +1,8 @@
 package cu.searchengine.ranker;
 
 import cu.searchengine.model.RankedDocument;
+import cu.searchengine.repository.DocumentsRepository;
+import cu.searchengine.service.DocumentService;
 
 import java.util.*;
 
@@ -8,6 +10,12 @@ public class PopularityScorer {
     private static final double DAMPING = 0.85;
     private static final double EPSILON = 0.0001;
     private static final int MAX_ITERATIONS = 100;
+    private final DocumentService  documentService;
+
+    public PopularityScorer(DocumentService documentService) {
+
+        this.documentService = documentService;
+    }
 
     public Map<Integer, RankedDocument> calculatePopularityScores(Map<Integer, RankedDocument> documents) {
         // build the web graph from the documents
@@ -32,10 +40,10 @@ public class PopularityScorer {
         // TODO: i will Replace this with actual link extraction from our documents
         // This is just a placeholder implementation
         Map<Integer, List<Integer>> webGraph = new HashMap<>();
-
-        webGraph.put(1, Arrays.asList(2, 3));
-        webGraph.put(2, Arrays.asList(3));
-        webGraph.put(3, Arrays.asList(1));
+        webGraph = documentService.getWebGraph();
+//        webGraph.put(1, Arrays.asList(2, 3));
+//        webGraph.put(2, Arrays.asList(3));
+//        webGraph.put(3, Arrays.asList(1));
 
         // Add any document that has no outgoing links as an empty list
         for (Integer docId : documents.keySet()) {

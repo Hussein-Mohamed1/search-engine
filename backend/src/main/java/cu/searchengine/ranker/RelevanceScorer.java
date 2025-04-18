@@ -1,5 +1,4 @@
 package cu.searchengine.ranker;
-
 public class RelevanceScorer {
     private final int totalDocuments;
 

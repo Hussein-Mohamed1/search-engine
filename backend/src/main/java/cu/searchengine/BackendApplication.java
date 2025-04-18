@@ -3,6 +3,7 @@ package cu.searchengine;
 import java.util.List;
 
 import cu.searchengine.model.SearchResult;
+import cu.searchengine.service.DocumentService;
 import cu.searchengine.service.SearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -19,11 +20,13 @@ import cu.searchengine.service.RankingService;
 public class BackendApplication implements CommandLineRunner {
 	private final RankingService rankingService;
 	private final SearchService searchService;
+	private final DocumentService documentService;
 
 	@Autowired
-	public BackendApplication(RankingService rankingService, SearchService searchService) {
+	public BackendApplication(RankingService rankingService, SearchService searchService, DocumentService documentService) {
 		this.rankingService = rankingService;
         this.searchService = searchService;
+        this.documentService = documentService;
     }
 
 	public static void main(String[] args) {
@@ -33,7 +36,7 @@ public class BackendApplication implements CommandLineRunner {
 	@Override
 	public void run(String... args) throws Exception {
 		// Initialize RankerController with a total document count of 100
-		RankerController ranker = new RankerController(100);
+		RankerController ranker = new RankerController(100 , documentService);
 
 		// Define query words
 		String[] queryWords = {"java", "search"};
