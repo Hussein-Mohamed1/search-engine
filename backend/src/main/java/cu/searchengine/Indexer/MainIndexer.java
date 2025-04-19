@@ -27,7 +27,7 @@ public class MainIndexer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         // This will run automatically when the Spring application starts
         List<WebDocument> documents = new ArrayList<>();
-        documents.addAll(generateDocuments(100));
+        documents.addAll(generateDocuments(10000));
 
         System.out.println("Clearing existing invertedIndex collection...");
         invertedIndexService.deleteAll();
