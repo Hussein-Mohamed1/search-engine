@@ -1,22 +1,79 @@
 package cu.searchengine;
 
-import cu.searchengine.Indexer.MainIndexer;  // Note the capital M in MainIndexer
-import cu.searchengine.service.InvertedIndexService;
+import java.util.List;
+
+import cu.searchengine.model.SearchResult;
+import cu.searchengine.service.DocumentService;
+import cu.searchengine.service.SearchService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
-@SpringBootApplication
+import cu.searchengine.controller.RankerController;
+import cu.searchengine.model.RankedDocument;
+import cu.searchengine.service.RankingService;
+
+@SpringBootApplication(scanBasePackages = {"cu.searchengine"})
 @EnableMongoRepositories(basePackages = "cu.searchengine.repository")
-public class BackendApplication {
+public class BackendApplication implements CommandLineRunner {
+	private final RankingService rankingService;
+	private final SearchService searchService;
+	private final DocumentService documentService;
+
+	@Autowired
+	public BackendApplication(RankingService rankingService, SearchService searchService, DocumentService documentService) {
+		this.rankingService = rankingService;
+		this.searchService = searchService;
+		this.documentService = documentService;
+	}
+
 	public static void main(String[] args) {
 		SpringApplication.run(BackendApplication.class, args);
 	}
 
-	@Bean
-	public CommandLineRunner indexerRunner(InvertedIndexService invertedIndexService) {
-		return new MainIndexer(invertedIndexService);  // Updated to MainIndexer
+	@Override
+	public void run(String... args) throws Exception {
+		// Initialize RankerController with a total document count of 100
+		RankerController ranker = new RankerController(100 , documentService);
+
+		// Define query words
+		String[] queryWords = {"java", "search"};
+		String[] queryWords2 = {"java", "ranking"};
+
+//		 Get ranked results
+//		List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
+//		List<RankedDocument> rankedResults2 = ranker.rankDocuments(queryWords2);
+//		SearchResult result1 = SearchResult.builder()
+//				.query("java Search")
+//				.results(rankedResults)
+//				.timestamp(System.currentTimeMillis())
+//				.build();
+//		searchService.saveSearchResult(result1);
+//		SearchResult result2 = SearchResult.builder()
+//				.query("java ranking")
+//				.results(rankedResults2)
+//				.timestamp(System.currentTimeMillis())
+//				.build();
+//		searchService.saveSearchResult(result2);
+//		 Print the ranked documents
+		List<SearchResult> res = searchService.getResultsByQuery("java Search");
+		System.out.println("size : " + res.size());
+		for (SearchResult result : res) {
+			System.out.println("Query: " + result.getQuery());
+			System.out.println("Timestamp: " + new java.util.Date(result.getTimestamp()));
+			System.out.println("Results:");
+
+			for (RankedDocument doc : result.getResults()) {
+				System.out.println("   └ Title: " + doc.getDocTitle());
+				System.out.println("     URL: " + doc.getUrl());
+				System.out.println("     Score: " + doc.getFinalScore());
+				System.out.println();
+			}
+
+			System.out.println("------------------------------------------------------------");
+		}
+
 	}
 }
