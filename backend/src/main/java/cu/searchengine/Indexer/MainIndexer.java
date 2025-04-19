@@ -33,10 +33,6 @@ public class MainIndexer implements CommandLineRunner {
         List<Documents> documents = documentService.getAllDocuments();
 //        documents.addAll(generateDocuments(100)); todo:recomment it
 
-        System.out.println("Clearing existing invertedIndex collection...");
-        invertedIndexService.deleteAll();
-        System.out.println("Collection cleared. Starting indexing...");
-
         long startTime = System.nanoTime();
         cu.searchengine.Indexer.ThreadPool threadPool = new cu.searchengine.Indexer.ThreadPool(documents, invertedIndexService);
         threadPool.implementThreading();
