@@ -4,6 +4,7 @@ import java.util.List;
 
 import cu.searchengine.model.SearchResult;
 import cu.searchengine.service.DocumentService;
+import cu.searchengine.service.InvertedIndexService;
 import cu.searchengine.service.SearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -21,13 +22,15 @@ public class BackendApplication implements CommandLineRunner {
 	private final RankingService rankingService;
 	private final SearchService searchService;
 	private final DocumentService documentService;
+	private final InvertedIndexService  invertedIndexService;
 
 	@Autowired
-	public BackendApplication(RankingService rankingService, SearchService searchService, DocumentService documentService) {
+	public BackendApplication(RankingService rankingService, SearchService searchService, DocumentService documentService, InvertedIndexService invertedIndexService) {
 		this.rankingService = rankingService;
 		this.searchService = searchService;
 		this.documentService = documentService;
-	}
+        this.invertedIndexService = invertedIndexService;
+    }
 
 	public static void main(String[] args) {
 		SpringApplication.run(BackendApplication.class, args);
@@ -36,27 +39,27 @@ public class BackendApplication implements CommandLineRunner {
 	@Override
 	public void run(String... args) throws Exception {
 		// Initialize RankerController with a total document count of 100
-		RankerController ranker = new RankerController(100 , documentService);
+		RankerController ranker = new RankerController(100 , documentService , invertedIndexService);
 
 		// Define query words
 		String[] queryWords = {"java", "search"};
 		String[] queryWords2 = {"java", "ranking"};
 
 //		 Get ranked results
-//		List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
-//		List<RankedDocument> rankedResults2 = ranker.rankDocuments(queryWords2);
-//		SearchResult result1 = SearchResult.builder()
-//				.query("java Search")
-//				.results(rankedResults)
-//				.timestamp(System.currentTimeMillis())
-//				.build();
-//		searchService.saveSearchResult(result1);
-//		SearchResult result2 = SearchResult.builder()
-//				.query("java ranking")
-//				.results(rankedResults2)
-//				.timestamp(System.currentTimeMillis())
-//				.build();
-//		searchService.saveSearchResult(result2);
+		List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
+		List<RankedDocument> rankedResults2 = ranker.rankDocuments(queryWords2);
+		SearchResult result1 = SearchResult.builder()
+				.query("java Search")
+				.results(rankedResults)
+				.timestamp(System.currentTimeMillis())
+				.build();
+		searchService.saveSearchResult(result1);
+		SearchResult result2 = SearchResult.builder()
+				.query("java ranking")
+				.results(rankedResults2)
+				.timestamp(System.currentTimeMillis())
+				.build();
+		searchService.saveSearchResult(result2);
 //		 Print the ranked documents
 		List<SearchResult> res = searchService.getResultsByQuery("java Search");
 		System.out.println("size : " + res.size());
