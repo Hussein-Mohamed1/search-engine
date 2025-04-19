@@ -10,22 +10,24 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "ranking_results")
 public class RankedDocument {
     @Id
-    private String docId;
+    private Integer docId;
     private String url;
     private String docTitle;
     private double RelevanceScore;
     private double PopularityScore;
     private double FinalScore;
+    private Integer tf;
     public RankedDocument() {
         // Required by Spring Data
     }
-    public RankedDocument(String docId, String url, String docTitle, double relevanceScore, double popularityScore, double finalScore) {
+    public RankedDocument(Integer docId, String url, String docTitle, double relevanceScore, double popularityScore, double finalScore,Integer tf) {
         this.docId = docId;
         this.url = url;
         this.docTitle = docTitle;
         RelevanceScore = relevanceScore;
         PopularityScore = popularityScore;
         FinalScore = finalScore;
+        this.tf=tf;
     }
     public RankedDocument(String url, String docTitle, double relevanceScore, double popularityScore, double finalScore) {
         this.url = url;

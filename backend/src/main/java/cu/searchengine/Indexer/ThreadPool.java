@@ -1,5 +1,7 @@
 package cu.searchengine.Indexer;
 
+import cu.searchengine.model.Documents;
+import cu.searchengine.model.RankedDocument;
 import cu.searchengine.model.WebDocument;
 import cu.searchengine.utils.Tokenizer;
 import cu.searchengine.model.InvertedIndexEntry;
@@ -14,12 +16,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class ThreadPool {
-    private final List<WebDocument> docs;
+    private final List<Documents> docs;
     private final ConcurrentHashMap<String, PostingData> globalIndex = new ConcurrentHashMap<>();
     private final InvertedIndexService invertedIndexService;
 
     // Constructor now takes InvertedIndexService instead of MongoTemplate
-    public ThreadPool(List<WebDocument> docs, InvertedIndexService invertedIndexService) {
+    public ThreadPool(List<Documents> docs, InvertedIndexService invertedIndexService) {
         this.docs = docs;
         this.invertedIndexService = invertedIndexService;
     }
@@ -33,7 +35,7 @@ public class ThreadPool {
         // Break documents into batches for parallel processing
         for (int i = 0; i < docs.size(); i += batchSize) {
             int end = Math.min(i + batchSize, docs.size());
-            List<WebDocument> batch = docs.subList(i, end);
+            List<Documents> batch = docs.subList(i, end);
             executor.execute(new DocumentProcessorTask(batch, globalIndex));
         }
 
@@ -56,13 +58,17 @@ public class ThreadPool {
         for (Map.Entry<String, PostingData> entry : globalIndex.entrySet()) {
             String word = entry.getKey();
             PostingData data = entry.getValue();
-            List<InvertedIndexEntry.PostingEntry> postingEntries = new ArrayList<>();
+            List<RankedDocument> postingEntries = new ArrayList<>();
             for (Map.Entry<Integer, Posting> p : data.getPostings().entrySet()) {
                 Posting posting = p.getValue();
-                postingEntries.add(new InvertedIndexEntry.PostingEntry(
+                postingEntries.add(new RankedDocument(
                         p.getKey(),
-                        posting.getTf(),
-                        posting.getPositions()
+                        posting.getUrl(),
+                        posting.getTitle(),
+                        0,
+                        0,
+                        0,
+                        posting.getTf()
                 ));
             }
             indexEntries.add(new InvertedIndexEntry(word, data.getDf(), postingEntries));
@@ -88,10 +94,10 @@ public class ThreadPool {
 
     // Task for processing each batch of documents
     private static class DocumentProcessorTask implements Runnable {
-        private final List<WebDocument> documents;
+        private final List<Documents> documents;
         private final Map<String, PostingData> globalIndex;
 
-        public DocumentProcessorTask(List<WebDocument> documents, Map<String, PostingData> globalIndex) {
+        public DocumentProcessorTask(List<Documents> documents, Map<String, PostingData> globalIndex) {
             this.documents = documents;
             this.globalIndex = globalIndex;
         }
