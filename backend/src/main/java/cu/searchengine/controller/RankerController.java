@@ -30,20 +30,20 @@ public class RankerController {
     }
 
     private void initializeDummyData() {
-        invertedIndexData.put("java", Arrays.asList(
-                new RankedDocument("1", "http://example.com/doc1", "Java Basics", 3, 10, 0),
-                new RankedDocument("2", "http://example.com/doc2", "Advanced Java", 2, 15, 0)
-        ));
-
-        invertedIndexData.put("search", Arrays.asList(
-                new RankedDocument("1", "http://example.com/doc1", "Java Basics", 5, 12, 0),
-                new RankedDocument("3", "http://example.com/doc3", "Search Algorithms", 4, 20, 0)
-        ));
-
-        invertedIndexData.put("ranking", Arrays.asList(
-                new RankedDocument("2", "http://example.com/doc2", "Advanced Java", 1, 5, 0),
-                new RankedDocument("3", "http://example.com/doc3", "Search Algorithms", 6, 8, 0)
-        ));
+//        invertedIndexData.put("java", Arrays.asList(
+//                new RankedDocument("1", "http://example.com/doc1", "Java Basics", 3, 10, 0),
+//                new RankedDocument("2", "http://example.com/doc2", "Advanced Java", 2, 15, 0)
+//        ));
+//
+//        invertedIndexData.put("search", Arrays.asList(
+//                new RankedDocument("1", "http://example.com/doc1", "Java Basics", 5, 12, 0),
+//                new RankedDocument("3", "http://example.com/doc3", "Search Algorithms", 4, 20, 0)
+//        ));
+//
+//        invertedIndexData.put("ranking", Arrays.asList(
+//                new RankedDocument("2", "http://example.com/doc2", "Advanced Java", 1, 5, 0),
+//                new RankedDocument("3", "http://example.com/doc3", "Search Algorithms", 6, 8, 0)
+//        ));
     }
 
     public List<RankedDocument> rankDocuments(String[] wordsArray) {
@@ -55,14 +55,14 @@ public class RankerController {
             List<RankedDocument> docsList = invertedIndexData.get(word); // RankedDocument will be --> Document from 3b3az
 
             for (RankedDocument doc : docsList) {
-                String docId = doc.getDocId();
+                Integer docId = doc.getDocId();
                 int tf = (int)doc.getRelevanceScore();
                 int df = (int)doc.getPopularityScore();
 
                 double relevanceScore = relevanceScorer.computeTFIDF(tf , df);
                 docScoresMap.compute(Integer.valueOf(docId), (key , rankedDoc)-> {
                     if (rankedDoc == null) {
-                        return new RankedDocument(docId, doc.getUrl(), doc.getDocTitle(), relevanceScore, 0, 0);
+                        return new RankedDocument(docId, doc.getUrl(), doc.getDocTitle(), relevanceScore, 0, 0,1);
                     } else {
                         rankedDoc.setRelevanceScore(rankedDoc.getRelevanceScore() + relevanceScore);
                         return rankedDoc;

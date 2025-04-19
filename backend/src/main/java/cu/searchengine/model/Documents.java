@@ -24,6 +24,10 @@ public class Documents implements Comparable<Documents> {
     private String content;
     private List<String> links;
 
+    public Documents()
+    {
+    }
+
     public Documents(int id, String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
         this.id = id;
         this.url = url;

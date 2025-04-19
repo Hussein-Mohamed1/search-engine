@@ -23,14 +23,14 @@ public class InvertedIndexEntry {
     private String word; // The term in the inverted index
 
     private Integer df; // Document frequency (number of documents containing the term)
-   private List<PostingEntry> postings; // List of postings for documents containing the term
+   private List<RankedDocument> RankedPostings; // List of postings for documents containing the term
 
     // Ensure postings is never null to avoid MongoDB persistence issues
-    public List<PostingEntry> getPostings() {
-        if (postings == null) {
-            postings = new ArrayList<>();
+    public List<RankedDocument> getPostings() {
+        if (RankedPostings == null) {
+            RankedPostings = new ArrayList<>();
         }
-        return postings;
+        return RankedPostings;
     }
 
     /**

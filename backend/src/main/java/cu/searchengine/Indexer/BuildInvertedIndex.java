@@ -3,6 +3,8 @@ package cu.searchengine.Indexer;
 import cu.searchengine.model.WebDocument;
 import cu.searchengine.utils.Tokenizer;
 
+import cu.searchengine.model.Documents;
+
 import java.util.*;
 
 public class BuildInvertedIndex {
@@ -14,9 +16,9 @@ public class BuildInvertedIndex {
         return invertedIndex;
     }
 
-    public BuildInvertedIndex(List<WebDocument> listOfDocuments, Tokenizer tokenizer) {
+    public BuildInvertedIndex(List<Documents> listOfDocuments, Tokenizer tokenizer) {
         this.tokenizer=tokenizer;
-        for (WebDocument doc : listOfDocuments) {
+        for (Documents doc : listOfDocuments) {
             int docId = doc.getId();
             String title = doc.getTitle();
             String url = doc.getUrl();
@@ -25,7 +27,7 @@ public class BuildInvertedIndex {
             // Tokenize each section with its priority position
             processText(doc.getTitle(), docId, 4,tokenizedWords,tokenizer,title,url);      // Title (4)
             processText(doc.getMainHeading(), docId, 3,tokenizedWords,tokenizer,title,url); // Main Heading (3)
-            processText(String.join(" ", doc.getSubHeading()), docId, 2,tokenizedWords,tokenizer,title,url); // Subheading (2)
+            processText(String.join(" ", doc.getSubHeadings()), docId, 2,tokenizedWords,tokenizer,title,url); // Subheading (2)
             processText(doc.getContent(), docId, 1,tokenizedWords,tokenizer,title,url);    // Content (1)
 
             for (Map.Entry<String, Posting> entry : tokenizedWords.entrySet()) {
