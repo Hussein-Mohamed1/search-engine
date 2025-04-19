@@ -33,7 +33,7 @@ public class Tokenizer {
 
     private final PorterStemmer stemmer = new PorterStemmer();
 
-    public void tokenizeWithPriority(String text, int priority, Map<String, Posting> tokenMap) {
+    public void tokenizeWithPriority(String text, int priority, Map<String, Posting> tokenMap,String title,String url) {
         text = text.toLowerCase().replaceAll("[^a-zA-Z0-9'\\-]", " ").trim();
         text = text.replaceAll("\\b\\d+\\b", " "); // Remove numbers
         String[] words = text.split("\\s+");
@@ -49,6 +49,8 @@ public class Tokenizer {
             // Update tokenMap without reinitializing it
             tokenMap.putIfAbsent(word, new Posting());
             tokenMap.get(word).addPosition(priority); // Adds position & increments TF
+            tokenMap.get(word).setTitle(title);
+            tokenMap.get(word).setUrl(url);
         }
     }
 

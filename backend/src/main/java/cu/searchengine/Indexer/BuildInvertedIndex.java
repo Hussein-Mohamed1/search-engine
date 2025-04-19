@@ -18,13 +18,15 @@ public class BuildInvertedIndex {
         this.tokenizer=tokenizer;
         for (WebDocument doc : listOfDocuments) {
             int docId = doc.getId();
+            String title = doc.getTitle();
+            String url = doc.getUrl();
             Map<String, Posting> tokenizedWords = new HashMap<>();
 
             // Tokenize each section with its priority position
-            processText(doc.getTitle(), docId, 4,tokenizedWords,tokenizer);      // Title (4)
-            processText(doc.getMainHeading(), docId, 3,tokenizedWords,tokenizer); // Main Heading (3)
-            processText(String.join(" ", doc.getSubHeading()), docId, 2,tokenizedWords,tokenizer); // Subheading (2)
-            processText(doc.getContent(), docId, 1,tokenizedWords,tokenizer);    // Content (1)
+            processText(doc.getTitle(), docId, 4,tokenizedWords,tokenizer,title,url);      // Title (4)
+            processText(doc.getMainHeading(), docId, 3,tokenizedWords,tokenizer,title,url); // Main Heading (3)
+            processText(String.join(" ", doc.getSubHeading()), docId, 2,tokenizedWords,tokenizer,title,url); // Subheading (2)
+            processText(doc.getContent(), docId, 1,tokenizedWords,tokenizer,title,url);    // Content (1)
 
             for (Map.Entry<String, Posting> entry : tokenizedWords.entrySet()) {
                 String word = entry.getKey();
@@ -46,11 +48,11 @@ public class BuildInvertedIndex {
         }
     }
 
-    private void processText(String text, int docId, int priority, Map<String, Posting> tokenizedWords,Tokenizer tokenizer) {
+    private void processText(String text, int docId, int priority, Map<String, Posting> tokenizedWords,Tokenizer tokenizer,String title,String url) {
         if (text == null || text.isEmpty()) return;
 
         // Tokenize and track priority-based positions
-       tokenizer.tokenizeWithPriority(text, priority,tokenizedWords);
+       tokenizer.tokenizeWithPriority(text, priority,tokenizedWords,title,url);
     }
 
     public Map<Integer, Posting> getPostings(String word) {

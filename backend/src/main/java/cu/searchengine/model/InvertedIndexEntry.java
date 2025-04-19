@@ -44,6 +44,8 @@ public class InvertedIndexEntry {
         private Integer docId; // Document ID
         private Integer tf; // Term frequency in the document
         private Integer [] priorityPositions; // Positions of the term in the document
+        private String docTitle;
+        private String url;
 
         // Ensure priorityPositions is never null to avoid MongoDB persistence issues
         public List<Integer> getPriorityPositions() {

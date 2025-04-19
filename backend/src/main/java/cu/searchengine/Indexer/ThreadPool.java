@@ -62,7 +62,9 @@ public class ThreadPool {
                 postingEntries.add(new InvertedIndexEntry.PostingEntry(
                         p.getKey(),
                         posting.getTf(),
-                        posting.getPositions()
+                        posting.getPositions(),
+                        posting.getTitle(),
+                        posting.getUrl()
                 ));
             }
             indexEntries.add(new InvertedIndexEntry(word, data.getDf(), postingEntries));
