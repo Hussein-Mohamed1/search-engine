@@ -21,8 +21,8 @@ A crawler-based search engine project developed for the Advanced Programming cou
 
 - **Backend**: Java
 - **Frontend**: HTML, CSS, JavaScript
-- **Database**: MySQL (or your chosen DB system)
-- **Build Tool**: Maven
+- **Database**: MongoDB
+- **Build Tool**: Gradle
 
 ## 🏗️ System Architecture
 
