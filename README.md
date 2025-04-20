@@ -21,8 +21,8 @@ A crawler-based search engine project developed for the Advanced Programming cou
 
 - **Backend**: Java
 - **Frontend**: HTML, CSS, JavaScript
-- **Database**: MySQL (or your chosen DB system)
-- **Build Tool**: Maven
+- **Database**: MongoDB
+- **Build Tool**: Gradle
 
 ## 🏗️ System Architecture
 
@@ -51,14 +51,6 @@ A crawler-based search engine project developed for the Advanced Programming cou
 - Results display with title, URL, and text snippets
 - Search timing metrics
 - Results pagination (10 results per page)
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Java JDK 11+
-- Maven 3.6+
-- MySQL 8.0+ (or equivalent database)
-- Web server (e.g., Tomcat) for hosting the interface
 
 ## 📊 Performance
 
