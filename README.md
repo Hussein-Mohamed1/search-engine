@@ -52,14 +52,6 @@ A crawler-based search engine project developed for the Advanced Programming cou
 - Search timing metrics
 - Results pagination (10 results per page)
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Java JDK 11+
-- Maven 3.6+
-- MySQL 8.0+ (or equivalent database)
-- Web server (e.g., Tomcat) for hosting the interface
-
 ## 📊 Performance
 
 - Crawls and indexes 6000+ web pages
