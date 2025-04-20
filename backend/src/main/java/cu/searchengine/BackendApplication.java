@@ -2,6 +2,7 @@ package cu.searchengine;
 
 import java.util.List;
 
+import cu.searchengine.Crawler.Crawler;
 import cu.searchengine.model.SearchResult;
 import cu.searchengine.service.DocumentService;
 import cu.searchengine.service.InvertedIndexService;
@@ -77,6 +78,11 @@ public class BackendApplication implements CommandLineRunner {
 
 			System.out.println("------------------------------------------------------------");
 		}
+
+		// todo increase number of threads when hosted on the server max(400)
+		int numberOfThreads = 50;
+		Crawler crawler = new Crawler("nemo", 50, numberOfThreads, 1000, documentService);
+		crawler.crawl();
 
 	}
 }

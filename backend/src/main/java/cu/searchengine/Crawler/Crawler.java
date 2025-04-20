@@ -20,6 +20,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.scheduling.annotation.Scheduled;
 
 public class Crawler implements Runnable {
     private final ConcurrentHashMap<String, Boolean> visitedURLSet;
@@ -29,13 +30,14 @@ public class Crawler implements Runnable {
     private final ResourceReader resourceReader;
     private final String userAgent;
     private final int MAX_PAGE_COUNT;
+    private final int WAIT_QUEUE_CAPACITY;
     private final AtomicInteger currentPage;
     private final ExecutorService executorService;
     private final List<WebDocument> webDocuments;
     private final HashMap<String, Boolean> pages404;
     private final DocumentService documentService;
 
-    public Crawler(String userAgent, int pgCount, int numberOfThreads, DocumentService doucumentService) {
+    public Crawler(String userAgent, int pgCount, int numberOfThreads, int queueCapacity, DocumentService doucumentService) {
         this.userAgent = userAgent;
         this.MAX_PAGE_COUNT = pgCount;
         this.documentService = doucumentService;
@@ -45,7 +47,15 @@ public class Crawler implements Runnable {
         this.normalizer = new URLNormalizer();
         this.robotsParser = new RobotsTxtParser();
         this.resourceReader = new ResourceReader(new DefaultResourceLoader());
-        this.executorService = Executors.newFixedThreadPool(numberOfThreads);
+        this.WAIT_QUEUE_CAPACITY = queueCapacity;
+        this.executorService = new ThreadPoolExecutor(
+                numberOfThreads,
+                numberOfThreads,
+                10L,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(this.WAIT_QUEUE_CAPACITY),
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
         this.webDocuments = new ArrayList<>();
         this.pages404 = new HashMap<>();
 
@@ -60,7 +70,6 @@ public class Crawler implements Runnable {
 
             String threadName = Thread.currentThread().getName();
             String normalizedURL = normalizer.normalize(url);
-
 
             if (!robotsParser.isLoaded(normalizedURL)) {
                 System.out.println(threadName + " - Loading robots.txt for: " + normalizedURL);
@@ -150,13 +159,15 @@ public class Crawler implements Runnable {
 
         String content = doc.select("div, p").text();
 
-
+        // todo remove empty one
         List<String> mainHeadings = doc.select("h1").parallelStream()
                 .map(Element::text)
+                .filter(text -> !text.trim().isEmpty())
                 .toList();
 
         List<String> subHeadings = doc.select("h2, h3, h4, h5, h6").parallelStream()
                 .map(Element::text)
+                .filter(text -> !text.trim().isEmpty())
                 .toList();
 
         List<String> links = doc.select("a").parallelStream()
@@ -167,20 +178,12 @@ public class Crawler implements Runnable {
                     }
                     return linkURL;
                 })
+                .filter(text -> !text.trim().isEmpty())
                 .toList();
 
         // todo modify mainheading in webdocument file to be a list
-        synchronized (webDocuments) {
-            webDocuments.add(new WebDocument(url, title, mainHeadings.get(0), subHeadings, content, links));
-        }
-
-        documentService.add(new Documents(url, title, mainHeadings.get(0), subHeadings, content, links));
+        documentService.add(new Documents(url, title, mainHeadings, subHeadings, content, links));
     }
-
-    public List<WebDocument> getWebDocuments() {
-        return webDocuments;
-    }
-
 
     private void processPage(String url) throws IOException {
         Document doc = Jsoup.connect(url).timeout(2000).get();
@@ -212,7 +215,7 @@ public class Crawler implements Runnable {
         }
     }
 
-    private void crawl() {
+    public void crawl() {
         int numThreads = ((ThreadPoolExecutor) executorService).getCorePoolSize();
         for (int i = 0; i < numThreads; i++) {
             executorService.submit(this);
@@ -229,24 +232,13 @@ public class Crawler implements Runnable {
         }
     }
 
-    public static void main(String[] args) {
-        int numberOfThreads = Runtime.getRuntime().availableProcessors() * 2;
-//        System.out.println("Number of threads: " + numberOfThreads);
-        DocumentsRepository documentsRepository = null;
-        DocumentService documentService1 = new DocumentService(documentsRepository);
-        Crawler crawler = new Crawler("nemo", 200, numberOfThreads , documentService1);
-
-//        Document doc = null;
-//        try {
-//            doc = Jsoup.connect("https://spring.io").timeout(2000).get();
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        }
-//        crawler.parseDocument(doc);
-
-        crawler.crawl();
-        System.out.println("\n========================================CRAWLER END===============================================\n");
-        crawler.print();
-
+    // todo change scheduling time (we can divide the 6k pages)
+    @Scheduled(fixedRate = 300000)
+    public void schedulueCrawling() {
+        System.out.println("\nStarting scheduled crawling...\n");
+        this.crawl();
+        System.out.println("\nEnd of scheduled crawling...\n");
+        this.print();
     }
 }
+
