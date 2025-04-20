@@ -19,7 +19,7 @@ public class Documents implements Comparable<Documents> {
     private String url;
 
     private String title;
-    private String mainHeading;
+    private List<String> mainHeading;
     private List<String> subHeadings;
     private String content;
     private List<String> links;
@@ -28,7 +28,7 @@ public class Documents implements Comparable<Documents> {
     {
     }
 
-    public Documents(int id, String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
+    public Documents(int id, String url, String title, List<String> mainHeading, List<String> subHeading, String content, List<String> Links) {
         this.id = id;
         this.url = url;
         this.title = title;
@@ -39,7 +39,7 @@ public class Documents implements Comparable<Documents> {
     }
 
     // Alternative constructor for auto-generating IDs
-    public Documents(String url, String title, String mainHeading, List<String> subHeading, String content, List<String> Links) {
+    public Documents(String url, String title, List<String> mainHeading, List<String> subHeading, String content, List<String> Links) {
         this.id = url.hashCode(); // Generate ID based on URL (ensures consistency)
         this.url = url;
         this.title = title;
