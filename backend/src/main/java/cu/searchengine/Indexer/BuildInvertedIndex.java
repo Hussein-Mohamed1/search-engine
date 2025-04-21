@@ -26,7 +26,7 @@ public class BuildInvertedIndex {
 
             // Tokenize each section with its priority position
             processText(doc.getTitle(), docId, 4,tokenizedWords,tokenizer,title,url);      // Title (4)
-//            processText(doc.getMainHeading(), docId, 3,tokenizedWords,tokenizer,title,url); // Main Heading (3)
+            processText(String.join(" ",doc.getMainHeading()), docId, 3,tokenizedWords,tokenizer,title,url); // Main Heading (3)
             processText(String.join(" ", doc.getSubHeadings()), docId, 2,tokenizedWords,tokenizer,title,url); // Subheading (2)
             processText(doc.getContent(), docId, 1,tokenizedWords,tokenizer,title,url);    // Content (1)
 

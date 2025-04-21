@@ -19,11 +19,13 @@ public class ThreadPool {
     private final List<Documents> docs;
     private final ConcurrentHashMap<String, PostingData> globalIndex = new ConcurrentHashMap<>();
     private final InvertedIndexService invertedIndexService;
+    private Boolean firstRun;
 
     // Constructor now takes InvertedIndexService instead of MongoTemplate
     public ThreadPool(List<Documents> docs, InvertedIndexService invertedIndexService) {
         this.docs = docs;
         this.invertedIndexService = invertedIndexService;
+        this.firstRun = true;
     }
 
     // Refactor threading implementation to use InvertedIndexService
@@ -49,7 +51,13 @@ public class ThreadPool {
         System.out.println("Indexing Complete! Final Index Size: " + globalIndex.size());
 
         // Use InvertedIndexService to bulk insert the entries
-        bulkInsertInvertedIndex();
+        if(firstRun)
+            bulkInsertInvertedIndex();
+        else
+        {
+            //todo:update the documents
+        }
+        firstRun = false;
     }
 
     // Refactored to use InvertedIndexService for bulk insert
@@ -76,17 +84,16 @@ public class ThreadPool {
 
         if (!indexEntries.isEmpty()) {
             System.out.println("Index entries to insert: " + indexEntries.size());
-            System.out.println("Sample entry: " + indexEntries.get(0));
-            try {
-                invertedIndexService.saveAll(indexEntries);
-            }
-            catch (Exception e) {
-                System.out.println(e.getMessage());
+            int batchSize=500;
+            for(int i=0;i<indexEntries.size();i+=batchSize)
+            {
+                long start=System.currentTimeMillis();
+                int end=Math.min(i+batchSize,indexEntries.size());
+                List<InvertedIndexEntry> batch=indexEntries.subList(i,end);
+                invertedIndexService.insertAll(batch);
+                System.out.println("Batch " + i + " inserted in " + (System.currentTimeMillis() - start) + "ms");
             }
             System.out.println("✅ Inverted index inserted. Total terms: " + indexEntries.size());
-            // Verify insertion
-            List<InvertedIndexEntry> savedEntries = invertedIndexService.getAll();
-            System.out.println("Entries in database: " + savedEntries.size());
         } else {
             System.out.println("⚠️ No index entries to insert.");
         }

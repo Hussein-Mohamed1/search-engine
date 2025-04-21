@@ -80,9 +80,9 @@ public class BackendApplication implements CommandLineRunner {
 		}
 
 		// todo increase number of threads when hosted on the server max(400)
-		int numberOfThreads = 50;
-		Crawler crawler = new Crawler("nemo", 50, numberOfThreads, 1000, documentService);
-		crawler.crawl();
+//		int numberOfThreads = 50;
+//		Crawler crawler = new Crawler("nemo", 50, numberOfThreads, 1000, documentService);
+//		crawler.crawl();
 
 	}
 }

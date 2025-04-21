@@ -31,6 +31,7 @@ public class MainIndexer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         // This will run automatically when the Spring application starts
         List<Documents> documents = documentService.getAllDocuments();
+        System.out.println("Total number of documents: " + documents.size());
 //        documents.addAll(generateDocuments(100)); todo:recomment it
 
         long startTime = System.nanoTime();

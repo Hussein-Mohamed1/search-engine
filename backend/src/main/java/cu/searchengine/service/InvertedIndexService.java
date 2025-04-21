@@ -16,14 +16,11 @@ public class InvertedIndexService {
         this.repository = repository;
     }
 
-    public void saveAll(List<InvertedIndexEntry> entries) {
+    public void insertAll(List<InvertedIndexEntry> entries) {
         try {
-            System.out.println("Entries in the repo: " + repository.count());
             System.out.println("Saving " + entries.size() + " entries to invertedIndex collection...");
-            repository.saveAll(entries);
+            repository.insert(entries);
             System.out.println("Successfully saved " + entries.size() + " entries to MongoDB");
-            List<InvertedIndexEntry> savedEntries = repository.findAll();
-            System.out.println("Entries in database after save: " + savedEntries.size());
         } catch (Exception e) {
             System.err.println("Error saving entries to MongoDB: " + e.getMessage());
             e.printStackTrace();
