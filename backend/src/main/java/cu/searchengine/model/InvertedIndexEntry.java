@@ -33,6 +33,10 @@ public class InvertedIndexEntry {
         return RankedPostings;
     }
 
+    public void setPostings(List<RankedDocument> existingPostings) {
+        this.RankedPostings = existingPostings;
+    }
+
     /**
      * Represents a posting entry for a specific document, containing the document ID,
      * term frequency, and positions of the term in the document.

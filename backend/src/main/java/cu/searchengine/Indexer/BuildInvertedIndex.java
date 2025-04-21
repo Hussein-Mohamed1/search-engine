@@ -6,9 +6,11 @@ import cu.searchengine.utils.Tokenizer;
 import cu.searchengine.model.Documents;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BuildInvertedIndex {
     private final Map<String, PostingData> invertedIndex = new HashMap<>();
+    private final ConcurrentHashMap<String,Integer> wordfreq=new ConcurrentHashMap<>();
     Tokenizer tokenizer;
 
 
@@ -16,7 +18,7 @@ public class BuildInvertedIndex {
         return invertedIndex;
     }
 
-    public BuildInvertedIndex(List<Documents> listOfDocuments, Tokenizer tokenizer) {
+    public BuildInvertedIndex(List<Documents> listOfDocuments, Tokenizer tokenizer,ConcurrentHashMap<String,Integer> wordfreq) {
         this.tokenizer=tokenizer;
         for (Documents doc : listOfDocuments) {
             int docId = doc.getId();
@@ -25,10 +27,10 @@ public class BuildInvertedIndex {
             Map<String, Posting> tokenizedWords = new HashMap<>();
 
             // Tokenize each section with its priority position
-            processText(doc.getTitle(), docId, 4,tokenizedWords,tokenizer,title,url);      // Title (4)
-            processText(String.join(" ",doc.getMainHeading()), docId, 3,tokenizedWords,tokenizer,title,url); // Main Heading (3)
-            processText(String.join(" ", doc.getSubHeadings()), docId, 2,tokenizedWords,tokenizer,title,url); // Subheading (2)
-            processText(doc.getContent(), docId, 1,tokenizedWords,tokenizer,title,url);    // Content (1)
+            processText(doc.getTitle(), docId, 4,tokenizedWords,tokenizer,title,url,wordfreq);      // Title (4)
+            processText(String.join(" ",doc.getMainHeading()), docId, 3,tokenizedWords,tokenizer,title,url,wordfreq); // Main Heading (3)
+            processText(String.join(" ", doc.getSubHeadings()), docId, 2,tokenizedWords,tokenizer,title,url,wordfreq); // Subheading (2)
+            processText(doc.getContent(), docId, 1,tokenizedWords,tokenizer,title,url,wordfreq);    // Content (1)
 
             for (Map.Entry<String, Posting> entry : tokenizedWords.entrySet()) {
                 String word = entry.getKey();
@@ -50,11 +52,11 @@ public class BuildInvertedIndex {
         }
     }
 
-    private void processText(String text, int docId, int priority, Map<String, Posting> tokenizedWords,Tokenizer tokenizer,String title,String url) {
+    private void processText(String text, int docId, int priority, Map<String, Posting> tokenizedWords,Tokenizer tokenizer,String title,String url,ConcurrentHashMap<String,Integer> wordfreq) {
         if (text == null || text.isEmpty()) return;
 
         // Tokenize and track priority-based positions
-       tokenizer.tokenizeWithPriority(text, priority,tokenizedWords,title,url);
+       tokenizer.tokenizeWithPriority(text, priority,tokenizedWords,title,url,wordfreq);
     }
 
     public Map<Integer, Posting> getPostings(String word) {
