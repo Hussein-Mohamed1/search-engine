@@ -5,8 +5,7 @@ import cu.searchengine.Indexer.PostingData;
 import cu.searchengine.Indexer.Posting;
 
 import java.util.*;
-
-
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class Tokenizer {
@@ -33,7 +32,7 @@ public class Tokenizer {
 
     private final PorterStemmer stemmer = new PorterStemmer();
 
-    public void tokenizeWithPriority(String text, int priority, Map<String, Posting> tokenMap,String title,String url) {
+    public void tokenizeWithPriority(String text, int priority, Map<String, Posting> tokenMap, String title, String url, ConcurrentHashMap<String,Integer>wordfreq) {
         text = text.toLowerCase().replaceAll("[^a-zA-Z0-9'\\-]", " ").trim();
         text = text.replaceAll("\\b\\d+\\b", " "); // Remove numbers
         String[] words = text.split("\\s+");
@@ -45,6 +44,8 @@ public class Tokenizer {
             stemmer.setCurrent(word);
             stemmer.stem();
             word = stemmer.getCurrent();
+
+            wordfreq.putIfAbsent(word,1);
 
             // Update tokenMap without reinitializing it
             tokenMap.putIfAbsent(word, new Posting());
