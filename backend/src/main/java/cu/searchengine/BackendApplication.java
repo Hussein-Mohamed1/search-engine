@@ -12,6 +12,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.context.annotation.Bean;
 
 import cu.searchengine.controller.RankerController;
 import cu.searchengine.model.RankedDocument;
@@ -19,6 +22,7 @@ import cu.searchengine.service.RankingService;
 
 @SpringBootApplication(scanBasePackages = {"cu.searchengine"})
 @EnableMongoRepositories(basePackages = "cu.searchengine.repository")
+@EnableScheduling // Enable scheduling for periodic/background tasks
 public class BackendApplication implements CommandLineRunner {
 	private final RankingService rankingService;
 	private final SearchService searchService;
@@ -33,56 +37,38 @@ public class BackendApplication implements CommandLineRunner {
         this.invertedIndexService = invertedIndexService;
     }
 
+	@Autowired
+	private cu.searchengine.Crawler.Crawler crawler; // Make sure Crawler is a @Component or @Service
+
+	@Autowired
+	private cu.searchengine.Indexer.ThreadPool threadPool; // Make sure ThreadPool is a @Component or @Service
+
 	public static void main(String[] args) {
 		SpringApplication.run(BackendApplication.class, args);
 	}
 
 	@Override
 	public void run(String... args) throws Exception {
-//		// Initialize RankerController with a total document count of 100
-//		RankerController ranker = new RankerController(100 , documentService , invertedIndexService);
-//
-//		// Define query words
-//		String[] queryWords = {"java", "search"};
-//		String[] queryWords2 = {"java", "ranking"};
-//
-////		 Get ranked results
-//		List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
-//		List<RankedDocument> rankedResults2 = ranker.rankDocuments(queryWords2);
-//		SearchResult result1 = SearchResult.builder()
-//				.query("java Search")
-//				.results(rankedResults)
-//				.timestamp(System.currentTimeMillis())
-//				.build();
-//		searchService.saveSearchResult(result1);
-//		SearchResult result2 = SearchResult.builder()
-//				.query("java ranking")
-//				.results(rankedResults2)
-//				.timestamp(System.currentTimeMillis())
-//				.build();
-//		searchService.saveSearchResult(result2);
-////		 Print the ranked documents
-//		List<SearchResult> res = searchService.getResultsByQuery("java Search");
-//		System.out.println("size : " + res.size());
-//		for (SearchResult result : res) {
-//			System.out.println("Query: " + result.getQuery());
-//			System.out.println("Timestamp: " + new java.util.Date(result.getTimestamp()));
-//			System.out.println("Results:");
-//
-//			for (RankedDocument doc : result.getResults()) {
-//				System.out.println("   └ Title: " + doc.getDocTitle());
-//				System.out.println("     URL: " + doc.getUrl());
-//				System.out.println("     Score: " + doc.getFinalScore());
-//				System.out.println();
-//			}
-//
-//			System.out.println("------------------------------------------------------------");
-//		}
+		// No need to start crawler/indexer here, handled by @Scheduled methods
+	}
 
-		// todo increase number of threads when hosted on the server max(400)
-//		int numberOfThreads = 50;
-//		Crawler crawler = new Crawler("nemo", 50, numberOfThreads, 1000, documentService);
-//		crawler.crawl();
+	// Run the crawler continuously (every 10 seconds, adjust as needed)
+	@Scheduled(fixedDelay = 10000)
+	public void runCrawler() {
+		try {
+			crawler.crawl();
+		} catch (Exception e) {
+			System.err.println("Crawler error: " + e.getMessage());
+		}
+	}
 
+	// Run the indexer periodically (every 5 minutes, adjust as needed)
+	@Scheduled(fixedDelay = 300000)
+	public void runIndexer() {
+		try {
+			threadPool.implementThreading();
+		} catch (Exception e) {
+			System.err.println("Indexer error: " + e.getMessage());
+		}
 	}
 }

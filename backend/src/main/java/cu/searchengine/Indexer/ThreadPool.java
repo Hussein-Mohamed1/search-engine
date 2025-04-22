@@ -6,6 +6,7 @@ import cu.searchengine.model.WebDocument;
 import cu.searchengine.utils.Tokenizer;
 import cu.searchengine.model.InvertedIndexEntry;
 import cu.searchengine.service.InvertedIndexService;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+@Component
 public class ThreadPool {
     private final List<Documents> docs;
     private final ConcurrentHashMap<String, PostingData> globalIndex = new ConcurrentHashMap<>();

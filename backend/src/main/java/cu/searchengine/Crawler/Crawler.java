@@ -1,17 +1,20 @@
 package cu.searchengine.Crawler;
 
 import cu.searchengine.model.Documents;
-import cu.searchengine.repository.DocumentsRepository;
+import cu.searchengine.model.WebDocument;
 import cu.searchengine.service.DocumentService;
+import cu.searchengine.utils.ResourceReader;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import cu.searchengine.utils.ResourceReader;
-import cu.searchengine.model.WebDocument;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
-import java.io.*;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,9 +22,7 @@ import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.scheduling.annotation.Scheduled;
-
+@Component
 public class Crawler implements Runnable {
     private final ConcurrentHashMap<String, Boolean> visitedURLSet;
     private final BlockingQueue<String> urlQueue;
@@ -37,10 +38,23 @@ public class Crawler implements Runnable {
     private final HashMap<String, Boolean> pages404;
     private final DocumentService documentService;
 
-    public Crawler(String userAgent, int pgCount, int numberOfThreads, int queueCapacity, DocumentService doucumentService) {
+    @Autowired
+    public Crawler(DocumentService documentService) {
+        // Set default values for other fields as needed
+        this(
+                "lumos", // userAgent
+                50, // MAX_PAGE_COUNT
+                50, // numberOfThreads
+                1000, // queueCapacity
+                documentService);
+    }
+
+    // Keep your existing constructor for full initialization
+    public Crawler(String userAgent, int pgCount, int numberOfThreads, int queueCapacity,
+            DocumentService documentService) {
         this.userAgent = userAgent;
         this.MAX_PAGE_COUNT = pgCount;
-        this.documentService = doucumentService;
+        this.documentService = documentService;
         this.currentPage = new AtomicInteger(0);
         this.visitedURLSet = new ConcurrentHashMap<>();
         this.urlQueue = new LinkedBlockingQueue<>();
@@ -54,8 +68,7 @@ public class Crawler implements Runnable {
                 10L,
                 TimeUnit.SECONDS,
                 new ArrayBlockingQueue<>(this.WAIT_QUEUE_CAPACITY),
-                new ThreadPoolExecutor.CallerRunsPolicy()
-        );
+                new ThreadPoolExecutor.CallerRunsPolicy());
         this.webDocuments = new ArrayList<>();
         this.pages404 = new HashMap<>();
 
@@ -66,7 +79,8 @@ public class Crawler implements Runnable {
     public void run() {
         while (!urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT) {
             String url = urlQueue.poll();
-            if (url == null) continue;
+            if (url == null)
+                continue;
 
             String threadName = Thread.currentThread().getName();
             String normalizedURL = normalizer.normalize(url);
@@ -76,14 +90,14 @@ public class Crawler implements Runnable {
                 robotsParser.loadRobotsTxt(normalizedURL);
             }
 
-
             if (!robotsParser.isAllowed(url, userAgent)) {
                 System.out.println(threadName + " - Crawling disallowed by robots.txt: " + url);
                 continue;
             }
 
             try {
-                if (!headRequest(url)) continue;
+                if (!headRequest(url))
+                    continue;
 
                 if (currentPage.incrementAndGet() > MAX_PAGE_COUNT) {
                     currentPage.decrementAndGet();
@@ -132,15 +146,15 @@ public class Crawler implements Runnable {
             Connection.Response response = Jsoup.connect(url).method(Connection.Method.HEAD).timeout(2000).execute();
             int statusCode = response.statusCode();
             if (statusCode >= 200 && statusCode < 400) {
-//                System.out.println("URL is accessible. status: " + statusCode);
+                // System.out.println("URL is accessible. status: " + statusCode);
                 return true;
             } else {
-//                System.out.println("URL is not accessible. Status: " + statusCode);
+                // System.out.println("URL is not accessible. Status: " + statusCode);
                 pages404.put(url, true);
                 return false;
             }
         } catch (IOException e) {
-//            System.out.println("Error during HEAD request: " + e.getMessage());
+            // System.out.println("Error during HEAD request: " + e.getMessage());
             return false;
         }
     }
@@ -155,7 +169,8 @@ public class Crawler implements Runnable {
         String title = doc.title();
         String url = doc.baseUri();
 
-        if (pages404.get(url) != null) return;
+        if (pages404.get(url) != null)
+            return;
 
         String content = doc.select("div, p").text();
 
@@ -194,7 +209,8 @@ public class Crawler implements Runnable {
         for (Element link : links) {
             String linkURL = link.attr("abs:href");
             String normalizedLinkURL = normalizer.normalize(linkURL);
-            if (normalizedLinkURL == null || normalizedLinkURL.isEmpty()) continue;
+            if (normalizedLinkURL == null || normalizedLinkURL.isEmpty())
+                continue;
 
             addURLToQueue(normalizedLinkURL);
         }
@@ -241,4 +257,3 @@ public class Crawler implements Runnable {
         this.print();
     }
 }
-
