@@ -6,7 +6,10 @@ import cu.searchengine.model.WebDocument;
 import cu.searchengine.utils.Tokenizer;
 import cu.searchengine.model.InvertedIndexEntry;
 import cu.searchengine.service.InvertedIndexService;
+import cu.searchengine.service.DocumentService;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,44 +21,57 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class ThreadPool {
-    private final List<Documents> docs;
-    private final ConcurrentHashMap<String, PostingData> globalIndex = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<String, Integer> wordfreq = new ConcurrentHashMap<>();
+    private static final Logger logger = LoggerFactory.getLogger(ThreadPool.class);
+    private final DocumentService documentService;
     private final InvertedIndexService invertedIndexService;
-    private Boolean firstRun;
+    private static final ConcurrentHashMap<String, PostingData> globalIndex = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Integer> wordfreq = new ConcurrentHashMap<>();
 
-    // Constructor now takes InvertedIndexService instead of MongoTemplate
-    public ThreadPool(List<Documents> docs, InvertedIndexService invertedIndexService) {
-        this.docs = docs;
+    // Only keep the constructor that takes DocumentService and InvertedIndexService
+    public ThreadPool(DocumentService documentService, InvertedIndexService invertedIndexService) {
+        this.documentService = documentService;
         this.invertedIndexService = invertedIndexService;
     }
 
-    // Refactor threading implementation to use InvertedIndexService
+    // Always fetch fresh documents from DB
     public void implementThreading() {
+        List<Documents> currentDocs = documentService.getAllDocuments();
+        if (currentDocs == null || currentDocs.isEmpty()) {
+            logger.warn("No documents to index. Skipping indexing run.");
+            return;
+        }
+
         int numThreads = 50;
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
-        int batchSize = (int) Math.ceil((double) docs.size() / numThreads);
+        int batchSize = (int) Math.ceil((double) currentDocs.size() / numThreads);
 
-        // Break documents into batches for parallel processing
-        for (int i = 0; i < docs.size(); i += batchSize) {
-            int end = Math.min(i + batchSize, docs.size());
-            List<Documents> batch = docs.subList(i, end);
-            executor.execute(new DocumentProcessorTask(batch, globalIndex));
+        logger.info("Starting indexing with {} threads, batch size: {}", numThreads, batchSize);
+        long startTime = System.currentTimeMillis();
+
+        for (int i = 0; i < currentDocs.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, currentDocs.size());
+            List<Documents> batch = currentDocs.subList(i, end);
+            logger.debug("Submitting batch [{}-{}) to thread pool", i, end);
+            executor.execute(new DocumentProcessorTask(batch, globalIndex, i, end));
         }
 
         executor.shutdown();
         try {
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+            if (!executor.awaitTermination(30, TimeUnit.MINUTES)) {
+                logger.error("Thread pool did not terminate within timeout. Forcing shutdown...");
+                executor.shutdownNow();
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            logger.error("Thread pool interrupted during awaitTermination", e);
+            executor.shutdownNow();
         }
-        System.out.println("All threads have finished execution!");
-        System.out.println("Indexing Complete! Final Index Size: " + globalIndex.size());
-
-        // Use InvertedIndexService to bulk insert the entries
+        logger.info("All threads have finished execution!");
+        logger.info("Indexing Complete! Final Index Size: {}", globalIndex.size());
+        logger.info("Indexing took {} ms", System.currentTimeMillis() - startTime);
 
         List<InvertedIndexEntry> indexEntries = convertGlobalIndexToList();
-        upsertInvertedIndexEntries(indexEntries); // Unified upsert method
+        upsertInvertedIndexEntries(indexEntries);
     }
 
     private List<InvertedIndexEntry> convertGlobalIndexToList() {
@@ -88,39 +104,39 @@ public class ThreadPool {
      */
     public void upsertInvertedIndexEntries(List<InvertedIndexEntry> indexEntries) {
         if (indexEntries == null || indexEntries.isEmpty()) {
-            System.out.println("⚠️ No index entries to upsert.");
+            logger.warn("⚠️ No index entries to upsert.");
             return;
         }
 
-        System.out.println("🔄 Upserting " + indexEntries.size() + " entries in invertedIndex...");
+        logger.info("🔄 Upserting {} entries in invertedIndex...", indexEntries.size());
 
         List<InvertedIndexEntry> toInsert = new ArrayList<>();
         List<InvertedIndexEntry> toUpdate = new ArrayList<>();
         int batchSize = 500;
         List<String> batchWords = new ArrayList<>(batchSize);
 
+        long upsertStart = System.currentTimeMillis();
+
         for (int i = 0; i < indexEntries.size(); i++) {
             InvertedIndexEntry newEntry = indexEntries.get(i);
             batchWords.add(newEntry.getWord());
 
-            // When batch is full or at the end, process the batch
             boolean isLast = (i == indexEntries.size() - 1);
             if (batchWords.size() == batchSize || isLast) {
-                // Fetch all existing entries for this batch from DB
+                logger.debug("Processing upsert batch [{}-{})", i - batchWords.size() + 1, i + 1);
+
                 List<InvertedIndexEntry> existingBatch = invertedIndexService.getByWords(batchWords);
                 Map<String, InvertedIndexEntry> existingMap = new java.util.HashMap<>();
                 for (InvertedIndexEntry entry : existingBatch) {
                     existingMap.put(entry.getWord(), entry);
                 }
 
-                // Process each entry in the batch
                 for (int j = i - batchWords.size() + 1; j <= i; j++) {
                     InvertedIndexEntry entry = indexEntries.get(j);
                     InvertedIndexEntry existing = existingMap.get(entry.getWord());
                     if (existing == null) {
                         toInsert.add(entry);
                     } else {
-                        // Merge new postings into existing
                         List<RankedDocument> existingPostings = existing.getPostings();
                         List<RankedDocument> newPostings = entry.getPostings();
 
@@ -144,12 +160,13 @@ public class ThreadPool {
                     }
                 }
 
-                // Batch insert/update if batchSize reached or at the end
                 if (!toInsert.isEmpty()) {
+                    logger.info("Inserting {} new index entries...", toInsert.size());
                     invertedIndexService.insertAll(new ArrayList<>(toInsert));
                     toInsert.clear();
                 }
                 if (!toUpdate.isEmpty()) {
+                    logger.info("Updating {} existing index entries...", toUpdate.size());
                     invertedIndexService.saveAll(new ArrayList<>(toUpdate));
                     toUpdate.clear();
                 }
@@ -157,31 +174,45 @@ public class ThreadPool {
             }
         }
 
-        System.out.println("✅ Finished upserting inverted index.");
+        logger.info("✅ Finished upserting inverted index. Took {} ms", System.currentTimeMillis() - upsertStart);
     }
 
     // Task for processing each batch of documents
     private static class DocumentProcessorTask implements Runnable {
         private final List<Documents> documents;
         private final Map<String, PostingData> globalIndex;
+        private final int batchStart;
+        private final int batchEnd;
 
-        public DocumentProcessorTask(List<Documents> documents, Map<String, PostingData> globalIndex) {
+        public DocumentProcessorTask(List<Documents> documents, Map<String, PostingData> globalIndex, int batchStart,
+                
+                int batchEnd) {
             this.documents = documents;
             this.globalIndex = globalIndex;
+            this.batchStart = batchStart;
+            this.batchEnd = batchEnd;
         }
 
         @Override
         public void run() {
-            BuildInvertedIndex localIndex = new BuildInvertedIndex(documents, new Tokenizer(), wordfreq); // Build index
-                                                                                                          // for batch
+            String threadName = Thread.currentThread().getName();
+            long start = System.currentTimeMillis();
+            Logger logger = LoggerFactory.getLogger(DocumentProcessorTask.class);
 
-            // Synchronize access to global index
+            logger.info("[{}] Processing documents batch [{}-{})", threadName, batchStart, batchEnd);
+
+            BuildInvertedIndex localIndex = new BuildInvertedIndex(documents, new Tokenizer(), wordfreq);
+
             synchronized (globalIndex) {
                 for (Map.Entry<String, PostingData> entry : localIndex.getInvertedIndex().entrySet()) {
                     globalIndex.putIfAbsent(entry.getKey(), new PostingData());
                     globalIndex.get(entry.getKey()).merge(entry.getValue());
                 }
             }
+
+                    
+            logger.info("[{}] Finished batch [{}-{}) in {} ms", threadName, batchStart, batchEnd,
+                    System.currentTimeMillis() - start);
         }
     }
 }

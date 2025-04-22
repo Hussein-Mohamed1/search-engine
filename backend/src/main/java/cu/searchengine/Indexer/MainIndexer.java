@@ -39,7 +39,7 @@ public class MainIndexer implements CommandLineRunner {
 //        documents.addAll(generateDocuments(100)); todo:recomment it
 
         long startTime = System.nanoTime();
-        cu.searchengine.Indexer.ThreadPool threadPool = new cu.searchengine.Indexer.ThreadPool(documents, invertedIndexService);
+        cu.searchengine.Indexer.ThreadPool threadPool = new cu.searchengine.Indexer.ThreadPool(documentService, invertedIndexService);
         threadPool.implementThreading();
 
         long endTime = System.nanoTime();

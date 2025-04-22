@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
@@ -24,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class Crawler implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(Crawler.class);
     private final ConcurrentHashMap<String, Boolean> visitedURLSet;
     private final BlockingQueue<String> urlQueue;
     private final URLNormalizer normalizer;
@@ -43,7 +46,7 @@ public class Crawler implements Runnable {
         // Set default values for other fields as needed
         this(
                 "lumos", // userAgent
-                50, // MAX_PAGE_COUNT
+                500, // MAX_PAGE_COUNT
                 50, // numberOfThreads
                 1000, // queueCapacity
                 documentService);
@@ -72,26 +75,32 @@ public class Crawler implements Runnable {
         this.webDocuments = new ArrayList<>();
         this.pages404 = new HashMap<>();
 
+        logger.info("Crawler initialized with userAgent={}, maxPages={}, threads={}, queueCapacity={}",
+                userAgent, pgCount, numberOfThreads, queueCapacity);
+
         loadSeeds();
     }
 
     @Override
     public void run() {
+        String threadName = Thread.currentThread().getName();
+        logger.info("[{}] Crawler thread started.", threadName);
+        long startTime = System.currentTimeMillis();
+
         while (!urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT) {
             String url = urlQueue.poll();
             if (url == null)
                 continue;
 
-            String threadName = Thread.currentThread().getName();
             String normalizedURL = normalizer.normalize(url);
 
             if (!robotsParser.isLoaded(normalizedURL)) {
-                System.out.println(threadName + " - Loading robots.txt for: " + normalizedURL);
+                logger.debug("[{}] Loading robots.txt for: {}", threadName, normalizedURL);
                 robotsParser.loadRobotsTxt(normalizedURL);
             }
 
             if (!robotsParser.isAllowed(url, userAgent)) {
-                System.out.println(threadName + " - Crawling disallowed by robots.txt: " + url);
+                logger.info("[{}] Crawling disallowed by robots.txt: {}", threadName, url);
                 continue;
             }
 
@@ -104,13 +113,14 @@ public class Crawler implements Runnable {
                     return;
                 }
 
+                logger.debug("[{}] Processing page: {}", threadName, normalizedURL);
                 processPage(normalizedURL);
 
             } catch (Exception e) {
-                System.out.println(threadName + " - Error: " + e.getMessage());
+                logger.error("[{}] Error: {}", threadName, e.getMessage(), e);
             }
         }
-        System.out.println(Thread.currentThread().getName() + " finished.");
+        logger.info("[{}] finished. Elapsed: {} ms", threadName, System.currentTimeMillis() - startTime);
     }
 
     private void loadSeeds() {
@@ -201,7 +211,8 @@ public class Crawler implements Runnable {
     }
 
     private void processPage(String url) throws IOException {
-        Document doc = Jsoup.connect(url).timeout(2000).get();
+        // Increase timeout to 10 seconds (10000 ms)
+        Document doc = Jsoup.connect(url).timeout(10000).get();
         parseDocument(doc);
         System.out.println("Thread " + Thread.currentThread().getName() + "======> Crawling URL: " + url);
 
@@ -220,23 +231,26 @@ public class Crawler implements Runnable {
         executorService.shutdown();
         try {
             if (!executorService.awaitTermination(5, TimeUnit.MINUTES)) {
-                System.out.println("Forcing shutdown...");
+                logger.warn("Forcing shutdown of crawler thread pool...");
                 executorService.shutdownNow();
             } else {
-                System.out.println("All tasks completed.");
+                logger.info("All crawler tasks completed.");
             }
         } catch (InterruptedException e) {
-            System.out.println("Thread interrupted while waiting for termination.");
+            logger.error("Thread interrupted while waiting for termination.", e);
             executorService.shutdownNow();
         }
     }
 
     public void crawl() {
         int numThreads = ((ThreadPoolExecutor) executorService).getCorePoolSize();
+        logger.info("Starting crawl with {} threads. URL queue size: {}", numThreads, urlQueue.size());
+        long start = System.currentTimeMillis();
         for (int i = 0; i < numThreads; i++) {
             executorService.submit(this);
         }
         shutdownExecutorService();
+        logger.info("Crawling finished in {} ms", System.currentTimeMillis() - start);
     }
 
     void print() {

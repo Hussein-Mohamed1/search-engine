@@ -63,7 +63,7 @@ public class BackendApplication implements CommandLineRunner {
 	}
 
 	// Run the indexer periodically (every 5 minutes, adjust as needed)
-	@Scheduled(fixedDelay = 300000)
+	@Scheduled(fixedDelay = 3000)
 	public void runIndexer() {
 		try {
 			threadPool.implementThreading();
