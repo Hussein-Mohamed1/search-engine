@@ -1,7 +1,6 @@
 package cu.searchengine.service;
 
 import cu.searchengine.model.InvertedIndexEntry;
-import cu.searchengine.model.RankedDocument;
 import cu.searchengine.repository.InvertedIndexRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,6 +35,10 @@ public class InvertedIndexService {
         return repository.findById(word).orElse(null);
     }
 
+    public List<InvertedIndexEntry> getByWords(List<String> words) {
+        return repository.findAllById(words);
+    }
+
     public void deleteByWord(String word) {
         repository.deleteById(word);
     }
@@ -48,5 +51,7 @@ public class InvertedIndexService {
         repository.save(entry);
     }
 
-
+    public void saveAll(List<InvertedIndexEntry> entries) {
+        repository.saveAll(entries);
+    }
 }

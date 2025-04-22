@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class ThreadPool {
     private final List<Documents> docs;
     private final ConcurrentHashMap<String, PostingData> globalIndex = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<String,Integer> wordfreq=new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Integer> wordfreq = new ConcurrentHashMap<>();
     private final InvertedIndexService invertedIndexService;
     private Boolean firstRun;
 
@@ -26,7 +26,6 @@ public class ThreadPool {
     public ThreadPool(List<Documents> docs, InvertedIndexService invertedIndexService) {
         this.docs = docs;
         this.invertedIndexService = invertedIndexService;
-        this.firstRun = true;
     }
 
     // Refactor threading implementation to use InvertedIndexService
@@ -54,12 +53,7 @@ public class ThreadPool {
         // Use InvertedIndexService to bulk insert the entries
 
         List<InvertedIndexEntry> indexEntries = convertGlobalIndexToList();
-        if (firstRun) {
-            bulkInsertInvertedIndex(indexEntries);
-        } else {
-            updateDocumentsWithInvertedIndex(indexEntries);
-        }
-        firstRun = false;
+        upsertInvertedIndexEntries(indexEntries); // Unified upsert method
     }
 
     private List<InvertedIndexEntry> convertGlobalIndexToList() {
@@ -78,8 +72,7 @@ public class ThreadPool {
                         0,
                         0,
                         0,
-                        posting.getTf()
-                ));
+                        posting.getTf()));
             }
 
             indexEntries.add(new InvertedIndexEntry(word, data.getDf(), postingEntries));
@@ -87,92 +80,88 @@ public class ThreadPool {
         return indexEntries;
     }
 
-
-    public void updateDocumentsWithInvertedIndex(List<InvertedIndexEntry> indexEntries) {
+    /**
+     * Upserts a list of InvertedIndexEntry: merges with existing if present,
+     * inserts if not.
+     */
+    public void upsertInvertedIndexEntries(List<InvertedIndexEntry> indexEntries) {
         if (indexEntries == null || indexEntries.isEmpty()) {
-            System.out.println("⚠️ No index entries to update.");
+            System.out.println("⚠️ No index entries to upsert.");
             return;
         }
 
-        System.out.println("🔄 Updating " + indexEntries.size() + " entries in invertedIndex...");
+        System.out.println("🔄 Upserting " + indexEntries.size() + " entries in invertedIndex...");
 
-        for (InvertedIndexEntry newEntry : indexEntries) {
-            try {
-                String word = newEntry.getWord();
-                Integer freq = ThreadPool.wordfreq.getOrDefault(word, 0); // default to 0 if not found
-                if (freq == 0) { //todo:comment this when testing updating only
-                    // Word has never appeared before → insert it
-                    invertedIndexService.insertAll(List.of(newEntry));
-                    continue;
+        List<InvertedIndexEntry> toInsert = new ArrayList<>();
+        List<InvertedIndexEntry> toUpdate = new ArrayList<>();
+        int batchSize = 500;
+        List<String> batchWords = new ArrayList<>(batchSize);
+
+        for (int i = 0; i < indexEntries.size(); i++) {
+            InvertedIndexEntry newEntry = indexEntries.get(i);
+            batchWords.add(newEntry.getWord());
+
+            // When batch is full or at the end, process the batch
+            boolean isLast = (i == indexEntries.size() - 1);
+            if (batchWords.size() == batchSize || isLast) {
+                // Fetch all existing entries for this batch from DB
+                List<InvertedIndexEntry> existingBatch = invertedIndexService.getByWords(batchWords);
+                Map<String, InvertedIndexEntry> existingMap = new java.util.HashMap<>();
+                for (InvertedIndexEntry entry : existingBatch) {
+                    existingMap.put(entry.getWord(), entry);
                 }
 
-                // Word exists in global frequency → check DB
-                InvertedIndexEntry existing = invertedIndexService.getByWord(word);
+                // Process each entry in the batch
+                for (int j = i - batchWords.size() + 1; j <= i; j++) {
+                    InvertedIndexEntry entry = indexEntries.get(j);
+                    InvertedIndexEntry existing = existingMap.get(entry.getWord());
+                    if (existing == null) {
+                        toInsert.add(entry);
+                    } else {
+                        // Merge new postings into existing
+                        List<RankedDocument> existingPostings = existing.getPostings();
+                        List<RankedDocument> newPostings = entry.getPostings();
 
-                if (existing == null) {
-                    // Fallback: doesn't exist in DB yet → insert
-                    invertedIndexService.insertAll(List.of(newEntry));
-                    continue;
-                }
+                        var existingDocIds = existingPostings.stream()
+                                .map(RankedDocument::getDocId)
+                                .collect(java.util.stream.Collectors.toSet());
 
-                // Merge new postings into existing
-                List<RankedDocument> existingPostings = existing.getPostings();
-                List<RankedDocument> newPostings = newEntry.getPostings();
+                        int added = 0;
+                        for (RankedDocument newPost : newPostings) {
+                            if (!existingDocIds.contains(newPost.getDocId())) {
+                                existingPostings.add(newPost);
+                                added++;
+                            }
+                        }
 
-                // Prevent duplicate docIds
-                var existingDocIds = existingPostings.stream()
-                        .map(RankedDocument::getDocId)
-                        .collect(java.util.stream.Collectors.toSet());
-
-                int added = 0;
-                for (RankedDocument newPost : newPostings) {
-                    if (!existingDocIds.contains(newPost.getDocId())) {
-                        existingPostings.add(newPost);
-                        added++;
+                        if (added > 0) {
+                            existing.setDf(existing.getDf() + added);
+                            existing.setPostings(existingPostings);
+                            toUpdate.add(existing);
+                        }
                     }
                 }
 
-                if (added > 0) {
-                    existing.setDf(existing.getDf() + added);
-                    existing.setPostings(existingPostings);
-                    invertedIndexService.save(existing); // Add this method or use repository.save
+                // Batch insert/update if batchSize reached or at the end
+                if (!toInsert.isEmpty()) {
+                    invertedIndexService.insertAll(new ArrayList<>(toInsert));
+                    toInsert.clear();
                 }
-
-            } catch (Exception e) {
-                System.err.println("❌ Failed to update word: " + newEntry.getWord());
-                e.printStackTrace();
+                if (!toUpdate.isEmpty()) {
+                    invertedIndexService.saveAll(new ArrayList<>(toUpdate));
+                    toUpdate.clear();
+                }
+                batchWords.clear();
             }
         }
 
-        System.out.println("✅ Finished updating inverted index.");
-    }
-
-
-
-    // Refactored to use InvertedIndexService for bulk insert
-    public void bulkInsertInvertedIndex(List<InvertedIndexEntry> indexEntries) {
-        if (!indexEntries.isEmpty()) {
-            System.out.println("Index entries to insert: " + indexEntries.size());
-            int batchSize=500;
-            for(int i=0;i<indexEntries.size();i+=batchSize)
-            {
-                long start=System.currentTimeMillis();
-                int end=Math.min(i+batchSize,indexEntries.size());
-                List<InvertedIndexEntry> batch=indexEntries.subList(i,end);
-                invertedIndexService.insertAll(batch);
-                System.out.println("Batch " + i + " inserted in " + (System.currentTimeMillis() - start) + "ms");
-            }
-            System.out.println("✅ Inverted index inserted. Total terms: " + indexEntries.size());
-        } else {
-            System.out.println("⚠️ No index entries to insert.");
-        }
+        System.out.println("✅ Finished upserting inverted index.");
     }
 
     // Task for processing each batch of documents
     private static class DocumentProcessorTask implements Runnable {
         private final List<Documents> documents;
         private final Map<String, PostingData> globalIndex;
-
 
         public DocumentProcessorTask(List<Documents> documents, Map<String, PostingData> globalIndex) {
             this.documents = documents;
@@ -181,7 +170,8 @@ public class ThreadPool {
 
         @Override
         public void run() {
-            BuildInvertedIndex localIndex = new BuildInvertedIndex(documents, new Tokenizer(),wordfreq); // Build index for batch
+            BuildInvertedIndex localIndex = new BuildInvertedIndex(documents, new Tokenizer(), wordfreq); // Build index
+                                                                                                          // for batch
 
             // Synchronize access to global index
             synchronized (globalIndex) {

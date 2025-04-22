@@ -39,45 +39,45 @@ public class BackendApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		// Initialize RankerController with a total document count of 100
-		RankerController ranker = new RankerController(100 , documentService , invertedIndexService);
-
-		// Define query words
-		String[] queryWords = {"java", "search"};
-		String[] queryWords2 = {"java", "ranking"};
-
-//		 Get ranked results
-		List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
-		List<RankedDocument> rankedResults2 = ranker.rankDocuments(queryWords2);
-		SearchResult result1 = SearchResult.builder()
-				.query("java Search")
-				.results(rankedResults)
-				.timestamp(System.currentTimeMillis())
-				.build();
-		searchService.saveSearchResult(result1);
-		SearchResult result2 = SearchResult.builder()
-				.query("java ranking")
-				.results(rankedResults2)
-				.timestamp(System.currentTimeMillis())
-				.build();
-		searchService.saveSearchResult(result2);
-//		 Print the ranked documents
-		List<SearchResult> res = searchService.getResultsByQuery("java Search");
-		System.out.println("size : " + res.size());
-		for (SearchResult result : res) {
-			System.out.println("Query: " + result.getQuery());
-			System.out.println("Timestamp: " + new java.util.Date(result.getTimestamp()));
-			System.out.println("Results:");
-
-			for (RankedDocument doc : result.getResults()) {
-				System.out.println("   └ Title: " + doc.getDocTitle());
-				System.out.println("     URL: " + doc.getUrl());
-				System.out.println("     Score: " + doc.getFinalScore());
-				System.out.println();
-			}
-
-			System.out.println("------------------------------------------------------------");
-		}
+//		// Initialize RankerController with a total document count of 100
+//		RankerController ranker = new RankerController(100 , documentService , invertedIndexService);
+//
+//		// Define query words
+//		String[] queryWords = {"java", "search"};
+//		String[] queryWords2 = {"java", "ranking"};
+//
+////		 Get ranked results
+//		List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
+//		List<RankedDocument> rankedResults2 = ranker.rankDocuments(queryWords2);
+//		SearchResult result1 = SearchResult.builder()
+//				.query("java Search")
+//				.results(rankedResults)
+//				.timestamp(System.currentTimeMillis())
+//				.build();
+//		searchService.saveSearchResult(result1);
+//		SearchResult result2 = SearchResult.builder()
+//				.query("java ranking")
+//				.results(rankedResults2)
+//				.timestamp(System.currentTimeMillis())
+//				.build();
+//		searchService.saveSearchResult(result2);
+////		 Print the ranked documents
+//		List<SearchResult> res = searchService.getResultsByQuery("java Search");
+//		System.out.println("size : " + res.size());
+//		for (SearchResult result : res) {
+//			System.out.println("Query: " + result.getQuery());
+//			System.out.println("Timestamp: " + new java.util.Date(result.getTimestamp()));
+//			System.out.println("Results:");
+//
+//			for (RankedDocument doc : result.getResults()) {
+//				System.out.println("   └ Title: " + doc.getDocTitle());
+//				System.out.println("     URL: " + doc.getUrl());
+//				System.out.println("     Score: " + doc.getFinalScore());
+//				System.out.println();
+//			}
+//
+//			System.out.println("------------------------------------------------------------");
+//		}
 
 		// todo increase number of threads when hosted on the server max(400)
 //		int numberOfThreads = 50;
