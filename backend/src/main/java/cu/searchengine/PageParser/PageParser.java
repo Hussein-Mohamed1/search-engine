@@ -25,7 +25,7 @@ public class PageParser {
             }
             return linkList;
         } catch (Exception e) {
-            logger.error(e.getMessage());
+            logger.debug(e.getMessage());
         }
         return null;
     }
@@ -40,7 +40,7 @@ public class PageParser {
             List<String> links = getLinks(url);
 
         } catch (IOException e) {
-            logger.error(e.getMessage());
+            logger.debug(e.getMessage());
         }
     }
 

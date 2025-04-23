@@ -64,8 +64,19 @@ public class DocumentService {
         return webGraph;
     }
 
-
     public void addAll(List<Documents> buffer) {
         documentsRepository.saveAll(buffer);
+    }
+
+
+    public List<Documents> getDocumentsToIndex() {
+        return documentsRepository.findByInvertedIndexProcessedFalse();
+    }
+
+    public void markDocumentsAsIndexed(List<Documents> docs) {
+        for (Documents doc : docs) {
+            doc.setInvertedIndexProcessed(true);
+        }
+        documentsRepository.saveAll(docs);
     }
 }

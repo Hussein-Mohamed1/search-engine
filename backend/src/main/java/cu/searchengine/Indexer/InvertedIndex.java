@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,11 +35,14 @@ public class InvertedIndex {
 
     // Always fetch fresh documents from DB
     public void implementThreading() {
-        List<Documents> currentDocs = documentService.getAllDocuments();
+        List<Documents> currentDocs = documentService.getDocumentsToIndex();
         if (currentDocs == null || currentDocs.isEmpty()) {
-            logger.warn("No documents to index. Skipping indexing run.");
+            logger.warn("No new documents to index. Skipping indexing run.");
             return;
         }
+
+        // Mark as indexed before processing to avoid race conditions
+        documentService.markDocumentsAsIndexed(currentDocs);
 
         int numThreads = 50;
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);

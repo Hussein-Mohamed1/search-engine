@@ -73,7 +73,7 @@ public class URLNormalizer {
             return result.toString();
 
         } catch (URISyntaxException e) {
-            logger.error("Invalid URL: {}", rawURL);
+            logger.debug("Invalid URL: {}", rawURL);
             return "";
         }
     }

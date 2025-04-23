@@ -165,7 +165,7 @@ public class RobotsTxtParser {
                 robotsTxtLoaded.put(domain, true);
             }
         } catch (Exception e) {
-            logger.error("Error loading robots.txt file {}", e.getMessage());
+            logger.debug("Error loading robots.txt file {}", e.getMessage());
         }
     }
 

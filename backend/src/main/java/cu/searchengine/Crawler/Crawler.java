@@ -139,7 +139,7 @@ public class Crawler implements Runnable {
                 processPage(normalizedURL);
 
             } catch (Exception e) {
-                logger.error("[{}] Error: {}", threadName, e.getMessage());
+                logger.debug("[{}] Error: {}", threadName, e.getMessage());
             }
         }
         logger.info("[{}] finished. Elapsed: {} ms", threadName, System.currentTimeMillis() - startTime);
