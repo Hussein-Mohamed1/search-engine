@@ -29,8 +29,15 @@ public class DocumentService {
     public Documents getDocumentById(int id) {
         return documentsRepository.findById(id).get();
     }
-    public Optional<Documents> getDocumentByUrl(String url) {return documentsRepository.findByUrl(url);}
-    public List<Documents> getAllDocuments() {return documentsRepository.findAll();}
+
+    public Optional<Documents> getDocumentByUrl(String url) {
+        return documentsRepository.findByUrl(url);
+    }
+
+    public List<Documents> getAllDocuments() {
+        return documentsRepository.findAll();
+    }
+
     public Map<Integer, List<Integer>> getWebGraph() {
         List<Documents> documents = documentsRepository.findAll();
 
@@ -58,4 +65,7 @@ public class DocumentService {
     }
 
 
+    public void addAll(List<Documents> buffer) {
+        documentsRepository.saveAll(buffer);
+    }
 }

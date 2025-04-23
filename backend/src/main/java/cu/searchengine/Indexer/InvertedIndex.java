@@ -1,15 +1,14 @@
 package cu.searchengine.Indexer;
 
 import cu.searchengine.model.Documents;
-import cu.searchengine.model.RankedDocument;
-import cu.searchengine.model.WebDocument;
-import cu.searchengine.utils.Tokenizer;
 import cu.searchengine.model.InvertedIndexEntry;
-import cu.searchengine.service.InvertedIndexService;
+import cu.searchengine.model.RankedDocument;
 import cu.searchengine.service.DocumentService;
-import org.springframework.stereotype.Component;
+import cu.searchengine.service.InvertedIndexService;
+import cu.searchengine.utils.Tokenizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,15 +19,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class ThreadPool {
-    private static final Logger logger = LoggerFactory.getLogger(ThreadPool.class);
+public class InvertedIndex {
+    private static final Logger logger = LoggerFactory.getLogger(InvertedIndex.class);
     private final DocumentService documentService;
     private final InvertedIndexService invertedIndexService;
     private static final ConcurrentHashMap<String, PostingData> globalIndex = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Integer> wordfreq = new ConcurrentHashMap<>();
 
     // Only keep the constructor that takes DocumentService and InvertedIndexService
-    public ThreadPool(DocumentService documentService, InvertedIndexService invertedIndexService) {
+    public InvertedIndex(DocumentService documentService, InvertedIndexService invertedIndexService) {
         this.documentService = documentService;
         this.invertedIndexService = invertedIndexService;
     }
@@ -161,12 +160,12 @@ public class ThreadPool {
                 }
 
                 if (!toInsert.isEmpty()) {
-                    logger.info("Inserting {} new index entries...", toInsert.size());
+                    logger.debug("Inserting {} new index entries...", toInsert.size());
                     invertedIndexService.insertAll(new ArrayList<>(toInsert));
                     toInsert.clear();
                 }
                 if (!toUpdate.isEmpty()) {
-                    logger.info("Updating {} existing index entries...", toUpdate.size());
+                    logger.debug("Updating {} existing index entries...", toUpdate.size());
                     invertedIndexService.saveAll(new ArrayList<>(toUpdate));
                     toUpdate.clear();
                 }
@@ -185,8 +184,8 @@ public class ThreadPool {
         private final int batchEnd;
 
         public DocumentProcessorTask(List<Documents> documents, Map<String, PostingData> globalIndex, int batchStart,
-                
-                int batchEnd) {
+
+                                     int batchEnd) {
             this.documents = documents;
             this.globalIndex = globalIndex;
             this.batchStart = batchStart;
@@ -199,7 +198,7 @@ public class ThreadPool {
             long start = System.currentTimeMillis();
             Logger logger = LoggerFactory.getLogger(DocumentProcessorTask.class);
 
-            logger.info("[{}] Processing documents batch [{}-{})", threadName, batchStart, batchEnd);
+            logger.debug("[{}] Processing documents batch [{}-{})", threadName, batchStart, batchEnd);
 
             BuildInvertedIndex localIndex = new BuildInvertedIndex(documents, new Tokenizer(), wordfreq);
 
@@ -210,8 +209,8 @@ public class ThreadPool {
                 }
             }
 
-                    
-            logger.info("[{}] Finished batch [{}-{}) in {} ms", threadName, batchStart, batchEnd,
+
+            logger.debug("[{}] Finished batch [{}-{}) in {} ms", threadName, batchStart, batchEnd,
                     System.currentTimeMillis() - start);
         }
     }
