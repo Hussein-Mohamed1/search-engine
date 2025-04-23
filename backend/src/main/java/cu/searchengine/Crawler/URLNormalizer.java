@@ -87,7 +87,7 @@ public class URLNormalizer {
             String normalizedURL = normalizer.normalize(raw);
             logger.error(normalizedURL);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
         }
     }
 

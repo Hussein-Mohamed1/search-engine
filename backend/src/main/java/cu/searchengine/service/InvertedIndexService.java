@@ -22,12 +22,11 @@ public class InvertedIndexService {
 
     public void insertAll(List<InvertedIndexEntry> entries) {
         try {
-            logger.info("Saving {} entries to invertedIndex collection...", entries.size());
+            logger.debug("Saving {} entries to invertedIndex collection...", entries.size());
             repository.insert(entries);
-            logger.info("Successfully saved {} entries to MongoDB", entries.size());
+            logger.debug("Successfully saved {} entries to MongoDB", entries.size());
         } catch (Exception e) {
-            logger.error("Error saving entries to MongoDB: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error saving entries to MongoDB: {}", e.getMessage());
         }
     }
 

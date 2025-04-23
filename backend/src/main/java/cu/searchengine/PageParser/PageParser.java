@@ -52,7 +52,7 @@ public class PageParser {
                 logger.debug(head.text());
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
         }
     }
 }

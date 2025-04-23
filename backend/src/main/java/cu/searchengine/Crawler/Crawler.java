@@ -96,7 +96,7 @@ public class Crawler implements Runnable {
             }
             logger.info("Loaded {} visited URLs from DB", visitedURLSet.size());
         } catch (Exception e) {
-            logger.error("Failed to load visited URLs from DB", e);
+            logger.error("Failed to load visited URLs from DB, {}", e.getMessage());
         }
     }
 
@@ -139,7 +139,7 @@ public class Crawler implements Runnable {
                 processPage(normalizedURL);
 
             } catch (Exception e) {
-                logger.error("[{}] Error: {}", threadName, e.getMessage(), e);
+                logger.error("[{}] Error: {}", threadName, e.getMessage());
             }
         }
         logger.info("[{}] finished. Elapsed: {} ms", threadName, System.currentTimeMillis() - startTime);
@@ -239,7 +239,7 @@ public class Crawler implements Runnable {
         } catch (Exception e) {
             // Ignore duplicate key errors, log others
             if (!e.getMessage().contains("duplicate key")) {
-                logger.error("Bulk insert error", e);
+                logger.error("Bulk insert error,{}", e.getMessage());
             }
         }
         buffer.clear();
@@ -271,7 +271,7 @@ public class Crawler implements Runnable {
                 logger.info("All crawler tasks completed.");
             }
         } catch (InterruptedException e) {
-            logger.error("Thread interrupted while waiting for termination.", e);
+            logger.error("Thread interrupted while waiting for termination. {}", e.getMessage());
             executorService.shutdownNow();
         }
     }
