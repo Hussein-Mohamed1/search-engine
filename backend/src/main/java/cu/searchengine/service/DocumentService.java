@@ -38,31 +38,33 @@ public class DocumentService {
 
         return documentsRepository.findAll();
     }
-    public int getNumberOfDocuments() {return (int) documentsRepository.count();}
-    public Map<Integer, List<Integer>> getWebGraph() {
+
+    public int getNumberOfDocuments() {
+        return (int) documentsRepository.count();
+    }
+
+    public Map<Integer, Set<Integer>> getWebGraph() {
         List<Documents> documents = documentsRepository.findAll();
 
         // Build URL to ID map for fast lookups
-        Map<String, Integer> urlToIdMap = new HashMap<>();
+        Map<Integer, Set<Integer>> webGraph = new HashMap<>();
         for (Documents doc : documents) {
-            urlToIdMap.put(doc.getUrl(), doc.getId());
-        }
-
-        // Now build the graph using the map
-        Map<Integer, List<Integer>> webGraph = new HashMap<>();
-        for (Documents doc : documents) {
-            List<Integer> linkedDocIds = new ArrayList<>();
-
-            for (String url : doc.getLinks()) {
-                if (urlToIdMap.containsKey(url)) {
-                    linkedDocIds.add(urlToIdMap.get(url));
-                }
-            }
-
-            webGraph.put(doc.getId(), linkedDocIds);
+            webGraph.put(doc.getUrl().hashCode(), doc.getWebGraph());
         }
 
         return webGraph;
+    }
+
+    public Map<Integer, Set<Integer>> getIncomingLinks() {
+        List<Documents> documents = documentsRepository.findAll();
+
+        // Build URL to ID map for fast lookups
+        Map<Integer, Set<Integer>> incomingLinks = new HashMap<>();
+        for (Documents doc : documents) {
+            incomingLinks.put(doc.getUrl().hashCode(), doc.getIncomingLinks());
+        }
+
+        return incomingLinks;
     }
 
     public void addAll(List<Documents> buffer) {

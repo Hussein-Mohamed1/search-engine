@@ -1,25 +1,31 @@
 package cu.searchengine.ranker;
 
 import cu.searchengine.model.RankedDocument;
-import cu.searchengine.repository.DocumentsRepository;
 import cu.searchengine.service.DocumentService;
 
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import com.google.common.util.concurrent.AtomicDouble;
+
 
 public class PopularityScorer {
     private static final double DAMPING = 0.85;
     private static final double EPSILON = 0.0001;
     private static final int MAX_ITERATIONS = 100;
-    private final DocumentService  documentService;
+    private final DocumentService documentService;
+    // Number of threads to use - adjust based on available cores
+    private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+    private final ExecutorService executorService;
 
     public PopularityScorer(DocumentService documentService) {
-
         this.documentService = documentService;
+        this.executorService = Executors.newFixedThreadPool(NUM_THREADS);
     }
 
     public Map<Integer, RankedDocument> calculatePopularityScores(Map<Integer, RankedDocument> documents) {
         // build the web graph from the documents
-        Map<Integer, List<Integer>> webGraph = buildWebGraph(documents);
+        Map<Integer, Set<Integer>> webGraph = documentService.getWebGraph();
 
         Map<Integer, Double> pageRankScores = calculatePageRank(webGraph);
 
@@ -33,24 +39,13 @@ public class PopularityScorer {
             }
         }
 
+        // Shutdown the executor service after we're done
+        executorService.shutdown();
+
         return documents;
     }
 
-    private Map<Integer, List<Integer>> buildWebGraph(Map<Integer, RankedDocument> documents) {
-        Map<Integer, List<Integer>> webGraph = new HashMap<>();
-        webGraph = documentService.getWebGraph();
-
-        // Add any document that has no outgoing links as an empty list
-        for (Integer docId : documents.keySet()) {
-            if (!webGraph.containsKey(docId)) {
-                webGraph.put(docId, new ArrayList<>());
-            }
-        }
-
-        return webGraph;
-    }
-
-    private Map<Integer, Double> calculatePageRank(Map<Integer, List<Integer>> links) {
+    private Map<Integer, Double> calculatePageRank(Map<Integer, Set<Integer>> links) {
         // Get all unique pages
         Set<Integer> allPages = new HashSet<>();
         for (Integer page : links.keySet()) {
@@ -60,8 +55,8 @@ public class PopularityScorer {
 
         int n = allPages.size();
 
-        Map<Integer, Double> currPageRank = new HashMap<>();
-        Map<Integer, Double> nextPageRank = new HashMap<>();
+        ConcurrentHashMap<Integer, Double> currPageRank = new ConcurrentHashMap<>();
+        ConcurrentHashMap<Integer, Double> nextPageRank = new ConcurrentHashMap<>();
 
         // Initialize with equal probability
         double initialRank = 1.0 / n;
@@ -83,7 +78,7 @@ public class PopularityScorer {
             incomingLinks.put(page, new ArrayList<>());
         }
 
-        for (Map.Entry<Integer, List<Integer>> entry : links.entrySet()) {
+        for (Map.Entry<Integer, Set<Integer>> entry : links.entrySet()) {
             Integer source = entry.getKey();
             for (Integer target : entry.getValue()) {
                 incomingLinks.get(target).add(source);
@@ -93,34 +88,91 @@ public class PopularityScorer {
         boolean converged = false;
         int iterations = 0;
 
-        while (!converged && iterations < MAX_ITERATIONS) {
-            // Calculate dangling node contribution
-            double danglingWeight = 0;
-            for (Integer page : danglingNodes) {
-                danglingWeight += currPageRank.get(page);
-            }
-            danglingWeight = DAMPING * danglingWeight / n;
+        // Lists to hold pages for each thread to process
+        List<List<Integer>> partitions = partitionPages(new ArrayList<>(allPages), NUM_THREADS);
 
+        while (!converged && iterations < MAX_ITERATIONS) {
+            // Calculate dangling node contribution (can be done in parallel)
+            AtomicDouble danglingWeightTotal = new AtomicDouble(0);
+
+            // Calculate dangling weight in parallel
+            CountDownLatch danglingLatch = new CountDownLatch(1);
+            executorService.submit(() -> {
+                double weight = 0;
+                for (Integer page : danglingNodes) {
+                    weight += currPageRank.get(page);
+                }
+                danglingWeightTotal.set(DAMPING * weight / n);
+                danglingLatch.countDown();
+            });
+
+            try {
+                danglingLatch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while calculating dangling weight", e);
+            }
+
+            double danglingWeight = danglingWeightTotal.get();
             double randomJumpProbability = (1 - DAMPING) / n;
 
-            for (Integer page : allPages) {
-                double sum = 0;
-                for (Integer sourceNode : incomingLinks.get(page)) {
-                    // Contribution from incoming links
-                    int outDegree = links.get(sourceNode).size();
-                    sum += currPageRank.get(sourceNode) / outDegree;
-                }
+            // Use CountDownLatch to wait for all threads to finish their calculations
+            CountDownLatch iterationLatch = new CountDownLatch(partitions.size());
 
-                nextPageRank.put(page, randomJumpProbability + DAMPING * sum + danglingWeight);
+            // Process each partition in parallel
+            for (List<Integer> partition : partitions) {
+                executorService.submit(() -> {
+                    try {
+                        for (Integer page : partition) {
+                            double sum = 0;
+                            for (Integer sourceNode : incomingLinks.get(page)) {
+                                // Contribution from incoming links
+                                if (links.containsKey(sourceNode)) {
+                                    int outDegree = links.get(sourceNode).size();
+                                    sum += currPageRank.get(sourceNode) / outDegree;
+                                }
+                            }
+                            nextPageRank.put(page, randomJumpProbability + DAMPING * sum + danglingWeight);
+                        }
+                    } finally {
+                        iterationLatch.countDown();
+                    }
+                });
             }
 
-            // Check for convergence
-            double diff = 0;
-            for (Integer page : allPages) {
-                diff += Math.abs(nextPageRank.get(page) - currPageRank.get(page));
+            try {
+                iterationLatch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while calculating page ranks", e);
             }
 
-            if (diff < EPSILON) {
+            // Check for convergence in parallel
+            AtomicDouble diff = new AtomicDouble(0);
+            CountDownLatch convergenceLatch = new CountDownLatch(partitions.size());
+
+            for (List<Integer> partition : partitions) {
+                executorService.submit(() -> {
+                    try {
+                        double partialDiff = 0;
+                        for (Integer page : partition) {
+                            partialDiff += Math.abs(nextPageRank.get(page) - currPageRank.get(page));
+                        }
+                        diff.addAndGet(partialDiff);
+                    } finally {
+                        convergenceLatch.countDown();
+                    }
+                });
+            }
+
+            try {
+                convergenceLatch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while checking convergence", e);
+            }
+
+            if (diff.get() < EPSILON) {
                 converged = true;
             }
 
@@ -133,16 +185,71 @@ public class PopularityScorer {
         }
 
         // Normalize PageRank values
-        double sum = 0;
-        for (double rank : currPageRank.values()) {
-            sum += rank;
+        AtomicDouble sum = new AtomicDouble(0);
+        CountDownLatch normalizationLatch = new CountDownLatch(partitions.size());
+
+        // Calculate sum in parallel
+        for (List<Integer> partition : partitions) {
+            executorService.submit(() -> {
+                try {
+                    double partialSum = 0;
+                    for (Integer page : partition) {
+                        partialSum += currPageRank.get(page);
+                    }
+                    sum.addAndGet(partialSum);
+                } finally {
+                    normalizationLatch.countDown();
+                }
+            });
         }
 
-        for (Integer page : currPageRank.keySet()) {
-            currPageRank.put(page, currPageRank.get(page) / sum);
+        try {
+            normalizationLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while normalizing", e);
         }
 
-        return currPageRank;
+        double totalSum = sum.get();
+
+        // Apply normalization in parallel
+        CountDownLatch applyNormalizationLatch = new CountDownLatch(partitions.size());
+        for (List<Integer> partition : partitions) {
+            executorService.submit(() -> {
+                try {
+                    for (Integer page : partition) {
+                        currPageRank.put(page, currPageRank.get(page) / totalSum);
+                    }
+                } finally {
+                    applyNormalizationLatch.countDown();
+                }
+            });
+        }
+
+        try {
+            applyNormalizationLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while applying normalization", e);
+        }
+
+        return new HashMap<>(currPageRank);
     }
 
+    /**
+     * Splits the list of pages into roughly equal partitions for parallel processing
+     */
+    private List<List<Integer>> partitionPages(List<Integer> pages, int numPartitions) {
+        List<List<Integer>> partitions = new ArrayList<>(numPartitions);
+
+        for (int i = 0; i < numPartitions; i++) {
+            partitions.add(new ArrayList<>());
+        }
+
+        for (int i = 0; i < pages.size(); i++) {
+            partitions.get(i % numPartitions).add(pages.get(i));
+        }
+
+        return partitions;
+    }
 }
