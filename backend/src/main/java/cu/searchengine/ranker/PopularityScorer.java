@@ -5,16 +5,13 @@ import cu.searchengine.service.DocumentService;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.util.concurrent.AtomicDouble;
-
 
 public class PopularityScorer {
     private static final double DAMPING = 0.85;
     private static final double EPSILON = 0.0001;
     private static final int MAX_ITERATIONS = 100;
     private final DocumentService documentService;
-    // Number of threads to use - adjust based on available cores
     private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
     private final ExecutorService executorService;
 
@@ -72,17 +69,42 @@ public class PopularityScorer {
             }
         }
 
-        // Create reverse Graph
-        Map<Integer, List<Integer>> incomingLinks = new HashMap<>();
+        // Create reverse Graph (incoming links) in parallel
+        ConcurrentHashMap<Integer, List<Integer>> incomingLinks = new ConcurrentHashMap<>();
+
+        // Initialize the incoming links map
         for (Integer page : allPages) {
-            incomingLinks.put(page, new ArrayList<>());
+            incomingLinks.put(page, new CopyOnWriteArrayList<>());
         }
 
-        for (Map.Entry<Integer, Set<Integer>> entry : links.entrySet()) {
-            Integer source = entry.getKey();
-            for (Integer target : entry.getValue()) {
-                incomingLinks.get(target).add(source);
-            }
+        // Partition the links for parallel processing
+        List<Map.Entry<Integer, Set<Integer>>> linkEntries = new ArrayList<>(links.entrySet());
+        List<List<Map.Entry<Integer, Set<Integer>>>> linkPartitions =
+                partitionEntries(linkEntries, NUM_THREADS);
+
+        CountDownLatch incomingLinksLatch = new CountDownLatch(linkPartitions.size());
+
+        // Process each partition in parallel to build the incoming links map
+        for (List<Map.Entry<Integer, Set<Integer>>> partition : linkPartitions) {
+            executorService.submit(() -> {
+                try {
+                    for (Map.Entry<Integer, Set<Integer>> entry : partition) {
+                        Integer source = entry.getKey();
+                        for (Integer target : entry.getValue()) {
+                            incomingLinks.get(target).add(source);
+                        }
+                    }
+                } finally {
+                    incomingLinksLatch.countDown();
+                }
+            });
+        }
+
+        try {
+            incomingLinksLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while building incoming links", e);
         }
 
         boolean converged = false;
@@ -125,7 +147,8 @@ public class PopularityScorer {
                     try {
                         for (Integer page : partition) {
                             double sum = 0;
-                            for (Integer sourceNode : incomingLinks.get(page)) {
+                            List<Integer> sources = incomingLinks.get(page);
+                            for (Integer sourceNode : sources) {
                                 // Contribution from incoming links
                                 if (links.containsKey(sourceNode)) {
                                     int outDegree = links.get(sourceNode).size();
@@ -248,6 +271,23 @@ public class PopularityScorer {
 
         for (int i = 0; i < pages.size(); i++) {
             partitions.get(i % numPartitions).add(pages.get(i));
+        }
+
+        return partitions;
+    }
+
+    /**
+     * Splits the list of map entries into roughly equal partitions for parallel processing
+     */
+    private <K, V> List<List<Map.Entry<K, V>>> partitionEntries(List<Map.Entry<K, V>> entries, int numPartitions) {
+        List<List<Map.Entry<K, V>>> partitions = new ArrayList<>(numPartitions);
+
+        for (int i = 0; i < numPartitions; i++) {
+            partitions.add(new ArrayList<>());
+        }
+
+        for (int i = 0; i < entries.size(); i++) {
+            partitions.get(i % numPartitions).add(entries.get(i));
         }
 
         return partitions;
