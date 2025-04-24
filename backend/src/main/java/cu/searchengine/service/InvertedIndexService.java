@@ -7,7 +7,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 
@@ -44,6 +47,19 @@ public class InvertedIndexService {
 
         return repository.findAllById(words);
     }
+    public Map<String, InvertedIndexEntry> getEntriesForWords(String[] words) {
+        // Get all entries in a single query
+        List<InvertedIndexEntry> entries = repository.findByWordIn(Arrays.asList(words));
+
+        // Map the results by word for easy lookup
+        Map<String, InvertedIndexEntry> result = new HashMap<>();
+        for (InvertedIndexEntry entry : entries) {
+            result.put(entry.getWord(), entry);
+        }
+
+        return result;
+    }
+
 
     public void deleteByWord(String word) {
         repository.deleteById(word);
