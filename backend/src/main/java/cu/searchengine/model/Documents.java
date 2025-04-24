@@ -19,7 +19,6 @@ public class Documents implements Comparable<Documents> {
 
     @Indexed(unique = true)
     private String url;
-
     private String title;
     private List<String> mainHeading;
     private List<String> subHeadings;
