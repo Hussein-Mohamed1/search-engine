@@ -1,8 +1,9 @@
 package cu.searchengine.service;
 
 import cu.searchengine.model.InvertedIndexEntry;
-import cu.searchengine.model.RankedDocument;
 import cu.searchengine.repository.InvertedIndexRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,7 +12,9 @@ import java.util.List;
 @Service
 
 public class InvertedIndexService {
+    private static final Logger logger = LoggerFactory.getLogger(InvertedIndexService.class);
     private final InvertedIndexRepository repository;
+
     @Autowired
     public InvertedIndexService(InvertedIndexRepository repository) {
         this.repository = repository;
@@ -19,12 +22,11 @@ public class InvertedIndexService {
 
     public void insertAll(List<InvertedIndexEntry> entries) {
         try {
-            System.out.println("Saving " + entries.size() + " entries to invertedIndex collection...");
+            logger.debug("Saving {} entries to invertedIndex collection...", entries.size());
             repository.insert(entries);
-            System.out.println("Successfully saved " + entries.size() + " entries to MongoDB");
+            logger.debug("Successfully saved {} entries to MongoDB", entries.size());
         } catch (Exception e) {
-            System.err.println("Error saving entries to MongoDB: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error saving entries to MongoDB: {}", e.getMessage());
         }
     }
 
@@ -34,6 +36,10 @@ public class InvertedIndexService {
 
     public InvertedIndexEntry getByWord(String word) {
         return repository.findById(word).orElse(null);
+    }
+
+    public List<InvertedIndexEntry> getByWords(List<String> words) {
+        return repository.findAllById(words);
     }
 
     public void deleteByWord(String word) {
@@ -48,5 +54,7 @@ public class InvertedIndexService {
         repository.save(entry);
     }
 
-
+    public void saveAll(List<InvertedIndexEntry> entries) {
+        repository.saveAll(entries);
+    }
 }

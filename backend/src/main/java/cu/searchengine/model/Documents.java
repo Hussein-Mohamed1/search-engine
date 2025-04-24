@@ -1,6 +1,8 @@
 package cu.searchengine.model;
 
-import lombok.*;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -23,9 +25,9 @@ public class Documents implements Comparable<Documents> {
     private List<String> subHeadings;
     private String content;
     private List<String> links;
+    private boolean invertedIndexProcessed = false;
 
-    public Documents()
-    {
+    public Documents() {
     }
 
     public Documents(int id, String url, String title, List<String> mainHeading, List<String> subHeading, String content, List<String> Links) {
@@ -47,6 +49,14 @@ public class Documents implements Comparable<Documents> {
         this.subHeadings = subHeading;
         this.content = content;
         this.links = Links;
+    }
+
+    public boolean isInvertedIndexProcessed() {
+        return invertedIndexProcessed;
+    }
+
+    public void setInvertedIndexProcessed(boolean invertedIndexProcessed) {
+        this.invertedIndexProcessed = invertedIndexProcessed;
     }
 
     @Override

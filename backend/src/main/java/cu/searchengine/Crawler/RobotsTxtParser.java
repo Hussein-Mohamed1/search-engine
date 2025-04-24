@@ -1,5 +1,8 @@
 package cu.searchengine.Crawler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -12,10 +15,12 @@ import java.util.HashMap;
 import java.util.List;
 
 public class RobotsTxtParser {
+    private static final Logger logger = LoggerFactory.getLogger(RobotsTxtParser.class);
+
     //each user agent with a list of it's prohibited paths  Domain ->(userAgent, disallowedPaths)
     private final HashMap<String, HashMap<String, List<String>>> disallowedPolicyMap;
     private final HashMap<String, HashMap<String, List<String>>> allowedPolicyMap;
-    private final HashMap<String,Boolean> robotsTxtLoaded;
+    private final HashMap<String, Boolean> robotsTxtLoaded;
 
     public RobotsTxtParser() {
         disallowedPolicyMap = new HashMap<>();
@@ -53,7 +58,7 @@ public class RobotsTxtParser {
             if (disallowedAllAgents != null) {
                 for (String directive : disallowedAllAgents) {
                     if (path.contains(directive)) {
-                        System.out.println("Blocked by all agents " + directive);
+                        logger.debug("Blocked by all agents {}", directive);
                         isAllowedCarwling = false;
                         break;
                     }
@@ -65,7 +70,7 @@ public class RobotsTxtParser {
                 if (isAllowedCarwling) {
                     for (String directive : disallowedCurrentAgent) {
                         if (path.contains(directive)) {
-                            System.out.println("Blocked by robots.txt: " + directive);
+                            logger.debug("Blocked by robots.txt: {}", directive);
                             isAllowedCarwling = false;
                             break;
                         }
@@ -88,7 +93,7 @@ public class RobotsTxtParser {
                 }
             }
         } catch (MalformedURLException e) {
-            System.out.println("Malformed URL: " + fullURL);
+            logger.error("Malformed URL: {}", fullURL);
             return false;
         }
         return isAllowedCarwling;
@@ -160,7 +165,7 @@ public class RobotsTxtParser {
                 robotsTxtLoaded.put(domain, true);
             }
         } catch (Exception e) {
-            System.out.println("Error loading robots.txt file " + e.getMessage());
+            logger.debug("Error loading robots.txt file {}", e.getMessage());
         }
     }
 
@@ -169,6 +174,6 @@ public class RobotsTxtParser {
         String domain = "https://www.netflix.com/robots.txt";
         RobotsTxtParser parser = new RobotsTxtParser();
         parser.loadRobotsTxt(domain);
-        System.out.println(parser.isAllowed("https://www.netflix.com/tudum", "Yahoo Pipes 1.0"));
+        logger.error(parser.isAllowed("https://www.netflix.com/tudum", "Yahoo Pipes 1.0") ? "Allowed" : "Not Allowed");
     }
 }

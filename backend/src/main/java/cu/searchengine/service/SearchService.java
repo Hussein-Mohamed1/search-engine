@@ -24,4 +24,8 @@ public class SearchService {
     public void saveSearchResult(SearchResult result) {
         searchResultRepository.save(result);
     }
+
+    public void saveAll(List<SearchResult> results) {
+        searchResultRepository.saveAll(results);
+    }
 }

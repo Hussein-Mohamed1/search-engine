@@ -1,17 +1,21 @@
 package cu.searchengine.Crawler;
 
 import cu.searchengine.model.Documents;
-import cu.searchengine.repository.DocumentsRepository;
+import cu.searchengine.model.WebDocument;
 import cu.searchengine.service.DocumentService;
+import cu.searchengine.utils.ResourceReader;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import cu.searchengine.utils.ResourceReader;
-import cu.searchengine.model.WebDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.stereotype.Component;
 
-import java.io.*;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,10 +23,22 @@ import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.scheduling.annotation.Scheduled;
+/**
+ * The crawler maintains a single set:
+ * <p>
+ * visitedURLSet: URLs we've seen anywhere (links we've discovered)
+ * - Populated initially from the database
+ * - Prevents re-queueing the same URLs
+ * - Preserves discovery history across runs
+ * - SHOULD NOT be reset after crawling
+ * <p>
+ * We rely on MongoDB's unique constraint on URL to prevent duplicate documents
+ * from being inserted in the database.
+ */
 
+@Component
 public class Crawler implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(Crawler.class);
     private final ConcurrentHashMap<String, Boolean> visitedURLSet;
     private final BlockingQueue<String> urlQueue;
     private final URLNormalizer normalizer;
@@ -36,11 +52,23 @@ public class Crawler implements Runnable {
     private final List<WebDocument> webDocuments;
     private final HashMap<String, Boolean> pages404;
     private final DocumentService documentService;
+    private final List<Documents> buffer = new CopyOnWriteArrayList<>();
+    static final int GLOBAL_TIMEOUT = 10_000;
 
-    public Crawler(String userAgent, int pgCount, int numberOfThreads, int queueCapacity, DocumentService doucumentService) {
+    @Autowired
+    public Crawler(DocumentService documentService) {
+        // Set default values for other fields as needed
+        this("lumos", // userAgent
+                1000, // MAX_PAGE_COUNT
+                50, // numberOfThreads
+                1000, // queueCapacity
+                documentService);
+    }
+
+    public Crawler(String userAgent, int pgCount, int numberOfThreads, int queueCapacity, DocumentService documentService) {
         this.userAgent = userAgent;
         this.MAX_PAGE_COUNT = pgCount;
-        this.documentService = doucumentService;
+        this.documentService = documentService;
         this.currentPage = new AtomicInteger(0);
         this.visitedURLSet = new ConcurrentHashMap<>();
         this.urlQueue = new LinkedBlockingQueue<>();
@@ -48,55 +76,73 @@ public class Crawler implements Runnable {
         this.robotsParser = new RobotsTxtParser();
         this.resourceReader = new ResourceReader(new DefaultResourceLoader());
         this.WAIT_QUEUE_CAPACITY = queueCapacity;
-        this.executorService = new ThreadPoolExecutor(
-                numberOfThreads,
-                numberOfThreads,
-                10L,
-                TimeUnit.SECONDS,
-                new ArrayBlockingQueue<>(this.WAIT_QUEUE_CAPACITY),
-                new ThreadPoolExecutor.CallerRunsPolicy()
-        );
+        this.executorService = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, 10L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(this.WAIT_QUEUE_CAPACITY), new ThreadPoolExecutor.CallerRunsPolicy());
         this.webDocuments = new ArrayList<>();
         this.pages404 = new HashMap<>();
 
+        logger.info("Crawler initialized with userAgent={}, maxPages={}, threads={}, queueCapacity={}", userAgent, pgCount, numberOfThreads, queueCapacity);
+
+        // Load visited URLs from DB to persist across runs
+        loadVisitedUrlsFromDb();
         loadSeeds();
+    }
+
+    private void loadVisitedUrlsFromDb() {
+        try {
+            List<Documents> allDocs = documentService.getAllDocuments();
+            for (Documents doc : allDocs) {
+                String normalized = normalizer.normalize(doc.getUrl());
+                visitedURLSet.put(normalized, true);
+            }
+            logger.info("Loaded {} visited URLs from DB", visitedURLSet.size());
+        } catch (Exception e) {
+            logger.error("Failed to load visited URLs from DB, {}", e.getMessage());
+        }
     }
 
     @Override
     public void run() {
-        while (!urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT) {
+        String threadName = Thread.currentThread().getName();
+        logger.debug("[{}] Crawler thread started.", threadName);
+        long startTime = System.currentTimeMillis();
+
+        // Change the while condition to prevent possible thread starvation
+        // Note: In previous condition, !urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT,
+        // if crawling is over and queue is empty but currentPage.get() < MAX_PAGE_COUNT is true, this thread will get starved
+        while (!urlQueue.isEmpty() && currentPage.get() < MAX_PAGE_COUNT) {
             String url = urlQueue.poll();
             if (url == null) continue;
 
-            String threadName = Thread.currentThread().getName();
             String normalizedURL = normalizer.normalize(url);
 
             if (!robotsParser.isLoaded(normalizedURL)) {
-                System.out.println(threadName + " - Loading robots.txt for: " + normalizedURL);
+                logger.debug("[{}] Loading robots.txt for: {}", threadName, normalizedURL);
                 robotsParser.loadRobotsTxt(normalizedURL);
             }
 
-
             if (!robotsParser.isAllowed(url, userAgent)) {
-                System.out.println(threadName + " - Crawling disallowed by robots.txt: " + url);
+                logger.debug("[{}] Crawling disallowed by robots.txt: {}", threadName, url);
                 continue;
             }
 
             try {
                 if (!headRequest(url)) continue;
 
+                // This block ensures the crawler does not exceed the maximum allowed pages.
+                // It increments the page count, checks if it exceeds the limit, and if so, decrements and exits.
                 if (currentPage.incrementAndGet() > MAX_PAGE_COUNT) {
                     currentPage.decrementAndGet();
                     return;
                 }
 
+                logger.debug("[{}] Processing page: {}", threadName, normalizedURL);
                 processPage(normalizedURL);
 
             } catch (Exception e) {
-                System.out.println(threadName + " - Error: " + e.getMessage());
+                logger.debug("[{}] Error: {}", threadName, e.getMessage());
             }
         }
-        System.out.println(Thread.currentThread().getName() + " finished.");
+        logger.info("[{}] finished. Elapsed: {} ms", threadName, System.currentTimeMillis() - startTime);
     }
 
     private void loadSeeds() {
@@ -109,11 +155,11 @@ public class Crawler implements Runnable {
                     urlQueue.add(line);
                     visitedURLSet.put(normalizer.normalize(line), true);
                 } else {
-                    System.out.println("Skipping invalid URL: " + line);
+                    logger.debug("Skipping invalid URL: {}", line);
                 }
             }
         } catch (Exception ex) {
-            System.err.println("Error reading from classpath: " + ex.getMessage());
+            logger.error("Error reading from classpath: {}", ex.getMessage());
         }
     }
 
@@ -122,29 +168,31 @@ public class Crawler implements Runnable {
             new URL(url).toURI();
             return true;
         } catch (Exception e) {
-            System.out.println("Skipping invalid URL: " + url);
+            logger.error("Skipping invalid URL: {}", url);
             return false;
         }
     }
 
     private boolean headRequest(String url) {
         try {
-            Connection.Response response = Jsoup.connect(url).method(Connection.Method.HEAD).timeout(2000).execute();
+            Connection.Response response = Jsoup.connect(url).method(Connection.Method.OPTIONS).timeout(GLOBAL_TIMEOUT).execute();
             int statusCode = response.statusCode();
             if (statusCode >= 200 && statusCode < 400) {
-//                System.out.println("URL is accessible. status: " + statusCode);
+                logger.debug("URL is accessible. status: {}", statusCode);
                 return true;
             } else {
-//                System.out.println("URL is not accessible. Status: " + statusCode);
+                logger.debug("URL is not accessible. Status: {}", statusCode);
                 pages404.put(url, true);
                 return false;
             }
         } catch (IOException e) {
-//            System.out.println("Error during HEAD request: " + e.getMessage());
+            logger.debug("Error during HEAD request: {}", e.getMessage());
             return false;
         }
     }
 
+    // if a given url isn't in the visitedUrlSet then putIfAbsent inserts it and returns null
+    // consequently it gets added to the urlQueue to get processed
     private void addURLToQueue(String normalizedLinkURL) {
         if (visitedURLSet.putIfAbsent(normalizedLinkURL, true) == null) {
             urlQueue.add(normalizedLinkURL);
@@ -159,36 +207,49 @@ public class Crawler implements Runnable {
 
         String content = doc.select("div, p").text();
 
-        // todo remove empty one
-        List<String> mainHeadings = doc.select("h1").parallelStream()
-                .map(Element::text)
-                .filter(text -> !text.trim().isEmpty())
-                .toList();
+        List<String> mainHeadings = doc.select("h1").parallelStream().map(Element::text).filter(text -> !text.trim().isEmpty()).toList();
 
-        List<String> subHeadings = doc.select("h2, h3, h4, h5, h6").parallelStream()
-                .map(Element::text)
-                .filter(text -> !text.trim().isEmpty())
-                .toList();
+        List<String> subHeadings = doc.select("h2, h3, h4, h5, h6").parallelStream().map(Element::text).filter(text -> !text.trim().isEmpty()).toList();
 
-        List<String> links = doc.select("a").parallelStream()
-                .map(link -> {
-                    String linkURL = link.attr("href");
-                    if (!linkURL.startsWith("http")) {
-                        linkURL = doc.baseUri() + linkURL;
-                    }
-                    return linkURL;
-                })
-                .filter(text -> !text.trim().isEmpty())
-                .toList();
+        List<String> links = doc.select("a").parallelStream().map(link -> {
+            String linkURL = link.attr("href");
+            if (!linkURL.startsWith("http")) {
+                linkURL = doc.baseUri() + linkURL;
+            }
+            return linkURL;
+        }).filter(text -> !text.trim().isEmpty()).toList();
 
-        // todo modify mainheading in webdocument file to be a list
-        documentService.add(new Documents(url, title, mainHeadings, subHeadings, content, links));
+        // The correct approach - Always add current document to buffer
+        // By this point, we've already decided to process this URL
+        // It passed the robots.txt check, HEAD request, and is part of our crawl
+        // Also, Don't pay attention to duplicate insertions since the url is the key
+        buffer.add(new Documents(url, title, mainHeadings, subHeadings, content, links));
+
+        // save documents in batches of 100
+        if (buffer.size() >= 100) {
+            flushBuffer();
+        }
+    }
+
+    // Saves a batch of documents
+    private synchronized void flushBuffer() {
+        if (buffer.isEmpty()) return;
+        try {
+            documentService.addAll(buffer);
+        } catch (Exception e) {
+            // Ignore duplicate key errors, log others
+            if (!e.getMessage().contains("duplicate key")) {
+                logger.error("Bulk insert error,{}", e.getMessage());
+            }
+        }
+        buffer.clear();
     }
 
     private void processPage(String url) throws IOException {
-        Document doc = Jsoup.connect(url).timeout(2000).get();
+        // Increase timeout to 10 seconds (10000 ms)
+        Document doc = Jsoup.connect(url).timeout(GLOBAL_TIMEOUT).get();
         parseDocument(doc);
-        System.out.println("Thread " + Thread.currentThread().getName() + "======> Crawling URL: " + url);
+        logger.debug("Thread {}: Crawling URL: {}", Thread.currentThread().getName(), url);
 
         Elements links = doc.select("a");
         for (Element link : links) {
@@ -204,41 +265,43 @@ public class Crawler implements Runnable {
         executorService.shutdown();
         try {
             if (!executorService.awaitTermination(5, TimeUnit.MINUTES)) {
-                System.out.println("Forcing shutdown...");
+                logger.warn("Forcing shutdown of crawler thread pool...");
                 executorService.shutdownNow();
             } else {
-                System.out.println("All tasks completed.");
+                logger.info("All crawler tasks completed.");
             }
         } catch (InterruptedException e) {
-            System.out.println("Thread interrupted while waiting for termination.");
+            logger.error("Thread interrupted while waiting for termination. {}", e.getMessage());
             executorService.shutdownNow();
         }
     }
 
     public void crawl() {
         int numThreads = ((ThreadPoolExecutor) executorService).getCorePoolSize();
+        logger.info("Starting crawl with {} threads. URL queue size: {}", numThreads, urlQueue.size());
+        long start = System.currentTimeMillis();
         for (int i = 0; i < numThreads; i++) {
             executorService.submit(this);
         }
         shutdownExecutorService();
+
+        // Make sure to flush any remaining documents in buffer
+        flushBuffer();
+
+        // Clear the URL queue once at the end
+        urlQueue.clear();
+
+        logger.info("Crawling finished in {} ms", System.currentTimeMillis() - start);
     }
 
     void print() {
-        System.out.println("PageCount: " + currentPage.get());
-        System.out.println("URLQueue: " + urlQueue.size());
-        System.out.println("VisitedURLSet: " + visitedURLSet.size());
+        logger.info("PageCount: {}", currentPage.get());
+        logger.info("URLQueue: {}", urlQueue.size());
+        logger.info("VisitedURLSet: {}", visitedURLSet.size());
         for (WebDocument webDocument : webDocuments) {
-            System.out.println(webDocument);
+            logger.info(String.valueOf(webDocument));
         }
     }
 
-    // todo change scheduling time (we can divide the 6k pages)
-    @Scheduled(fixedRate = 300000)
-    public void schedulueCrawling() {
-        System.out.println("\nStarting scheduled crawling...\n");
-        this.crawl();
-        System.out.println("\nEnd of scheduled crawling...\n");
-        this.print();
-    }
-}
 
+}

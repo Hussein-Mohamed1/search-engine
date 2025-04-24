@@ -1,47 +1,80 @@
 package cu.searchengine.Crawler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 
 public class URLNormalizer {
+    private static final Logger logger = LoggerFactory.getLogger(URLNormalizer.class);
+
     public String normalize(String rawURL) {
         try {
             if (rawURL == null || rawURL.isEmpty()) return "";
-
-            String normalizedURL="";
 
             // Lowercase URL
             String lowerCaseURL = rawURL.toLowerCase();
             URI uri = new URI(lowerCaseURL);
 
-            // Remove the default port number
-            String port = uri.getPort() == -1 ? "" : ":" + uri.getPort();
-            String noPortURL = lowerCaseURL.replace(port, "");
-
-            // Normalize the scheme
+            // Normalize scheme (http/https -> https)
             String scheme = uri.getScheme();
-            if(scheme.equals("http") || scheme.equals("https"))
-             normalizedURL = noPortURL.replace(scheme, "https");
+            if (scheme == null) scheme = "https";
+            if (scheme.equals("http") || scheme.equals("https")) scheme = "https";
+
+            // Remove "www." prefix
+            String host = uri.getHost();
+            if (host != null && host.startsWith("www.")) {
+                host = host.substring(4);
+            }
+
+            // Remove default ports
+            int port = uri.getPort();
+            boolean isDefaultPort = (port == 80 || port == 443 || port == -1);
+
+            // Normalize path: remove trailing slash (unless it's just "/")
+            String path = uri.getPath();
+            if (path == null || path.isEmpty()) {
+                path = "/";
+            } else if (path.length() > 1 && path.endsWith("/")) {
+                path = path.substring(0, path.length() - 1);
+            }
 
             // Remove fragments
-            if(uri.getFragment() != null) {
-                String fragment = uri.getFragment();
-                fragment = "#" + fragment ;
-                normalizedURL = noPortURL.replace(fragment, "");
-            }
-            // Normalize query parameters
-            if (uri.getQuery() != null) {
-                String[] params = uri.getQuery().split("&");
-                Arrays.sort(params);
-                String sortedQuery = String.join("&", params);
+            // (already handled by URI, as getPath() does not include fragment)
 
-                return normalizedURL.replace(uri.getQuery(), sortedQuery);
+            // Normalize query parameters: sort and filter empty
+            String normalizedQuery = null;
+            String query = uri.getQuery();
+            if (query != null && !query.isEmpty()) {
+                String[] params = query.split("&");
+                Arrays.sort(params);
+                StringBuilder queryBuilder = new StringBuilder();
+                for (String param : params) {
+                    if (!param.isEmpty() && !param.equals("=")) {
+                        if (queryBuilder.length() > 0) queryBuilder.append("&");
+                        queryBuilder.append(param);
+                    }
+                }
+                normalizedQuery = queryBuilder.length() > 0 ? queryBuilder.toString() : null;
             }
-            return normalizedURL;
+
+            // Rebuild normalized URL
+            StringBuilder result = new StringBuilder();
+            result.append(scheme).append("://").append(host);
+            if (port != -1 && !isDefaultPort) {
+                result.append(":").append(port);
+            }
+            result.append(path);
+            if (normalizedQuery != null) {
+                result.append("?").append(normalizedQuery);
+            }
+            return result.toString();
+
         } catch (URISyntaxException e) {
-           System.out.println("Invalid URL: " + rawURL);
-           return "";
+            logger.debug("Invalid URL: {}", rawURL);
+            return "";
         }
     }
 
@@ -52,9 +85,9 @@ public class URLNormalizer {
         try {
             URLNormalizer normalizer = new URLNormalizer();
             String normalizedURL = normalizer.normalize(raw);
-            System.out.println(normalizedURL);
+            logger.info(normalizedURL);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
         }
     }
 

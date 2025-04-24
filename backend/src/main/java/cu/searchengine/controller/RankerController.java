@@ -19,7 +19,7 @@ public class RankerController {
     private double relevanceWeight = 0.7;
     private double popularityWeight = 0.3;
 
-    private List<InvertedIndexEntry> invertedIndexData;
+    public List<InvertedIndexEntry> invertedIndexData;
 
     public RankerController(int totalDocuments, DocumentService documentServices, InvertedIndexService invertedIndexService) {
         this.relevanceScorer = new RelevanceScorer(totalDocuments);

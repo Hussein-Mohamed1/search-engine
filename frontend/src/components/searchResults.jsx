@@ -40,23 +40,25 @@ export default function SearchResults({ data, ...props }) {
               </div>
 
               <div className="flex flex-col">
-                <div className="text-xl text-white">
+                <div className="text-md md:text-lg text-white">
                   <span className="font-semibold">
                     {result.url.split(".")[1]}
                   </span>
                 </div>
-                <div className="text-md text-gray-400 flex items-center">
-                  {formatBreadcrumbParts(result.url).map((part, idx, arr) => (
-                    <span key={idx} className="flex items-center">
-                      {part}
-                      {idx < arr.length - 1 && (
-                        <ChevronRight
-                          size={10}
-                          className={"text-gray-400 mx-2"}
-                        />
-                      )}
-                    </span>
-                  ))}
+                <div className="text-[0.8rem] md:text-[1em] text-gray-400 flex items-center overflow-hidden">
+                  {formatBreadcrumbParts(result.url)
+                    .slice(0, 2)
+                    .map((part, idx, arr) => (
+                      <span key={idx} className="flex items-center">
+                        {part}
+                        {idx < arr.length - 1 && (
+                          <ChevronRight
+                            size={10}
+                            className={"text-gray-400 mx-2"}
+                          />
+                        )}
+                      </span>
+                    ))}
                 </div>
               </div>
             </div>
