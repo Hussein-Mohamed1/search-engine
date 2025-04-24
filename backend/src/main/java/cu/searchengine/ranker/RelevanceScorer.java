@@ -1,4 +1,3 @@
-
 package cu.searchengine.ranker;
 
 import cu.searchengine.model.RankedDocument;
@@ -24,54 +23,68 @@ public class RelevanceScorer {
         this.executorService = Executors.newFixedThreadPool(this.numThreads);
     }
 
-    public double computeTF(int termFrequency) {
-        return (double) termFrequency; // Keeping it double for possible future normalization
-    }
-
-    public double computeIDF(int documentFrequency) {
-        if (documentFrequency == 0) {
-            return 0; // Avoid division by zero, or use a small value like 0.0001
-        }
-        return Math.log(totalDocuments / (double) documentFrequency);
-    }
-
-    public double computeTFIDF(int termFrequency, int documentFrequency) {
-        double tf = computeTF(termFrequency);
-        double idf = computeIDF(documentFrequency);
+    public double computeTFIDF(int tf, int df) {
+        if (df == 0) return 0;
+        double idf = Math.log10((double) totalDocuments / df);
         return tf * idf;
     }
+
     public void computeRelevanceScoresParallel(Map<Integer, RankedDocument> docScoresMap,
                                                String[] wordsArray,
                                                Map<String, List<RankedDocument>> wordToDocsMap,
                                                Map<String, Integer> wordToDfMap) {
-        // Process each word in parallel
-        CountDownLatch wordsLatch = new CountDownLatch(wordsArray.length);
+        // Create partitions of words to process
+        List<List<String>> wordPartitions = partitionArray(wordsArray, numThreads);
+        CountDownLatch wordsLatch = new CountDownLatch(wordPartitions.size());
 
-        for (String word : wordsArray) {
+        // Process each partition in a separate thread
+        for (List<String> wordPartition : wordPartitions) {
             executorService.submit(() -> {
                 try {
-                    List<RankedDocument> docsList = wordToDocsMap.get(word);
-                    Integer df = wordToDfMap.get(word);
+                    // Process all words in this partition
+                    for (String word : wordPartition) {
+                        List<RankedDocument> docsList = wordToDocsMap.get(word);
+                        Integer df = wordToDfMap.get(word);
 
-                    if (docsList == null || df == null || docsList.isEmpty()) {
-                        return;
-                    }
+                        if (docsList == null || df == null || docsList.isEmpty()) {
+                            continue;
+                        }
 
-                    // Process each document for this word
-                    synchronized (docScoresMap) {
+                        // Calculate scores for each document for this word
+                        Map<Integer, Double> partialScores = new HashMap<>();
+
                         for (RankedDocument doc : docsList) {
                             Integer docId = doc.getDocId();
                             int tf = doc.getTf();
 
                             double relevanceScore = computeTFIDF(tf, df);
-                            docScoresMap.compute(docId, (key, rankedDoc) -> {
-                                if (rankedDoc == null) {
-                                    return new RankedDocument(docId, doc.getUrl(), doc.getDocTitle(), relevanceScore, 0, 0, tf);
-                                } else {
-                                    rankedDoc.setRelevanceScore(rankedDoc.getRelevanceScore() + relevanceScore);
-                                    return rankedDoc;
-                                }
-                            });
+                            partialScores.put(docId, relevanceScore);
+                        }
+
+                        // Update the shared map with synchronization
+                        synchronized (docScoresMap) {
+                            for (Map.Entry<Integer, Double> entry : partialScores.entrySet()) {
+                                Integer docId = entry.getKey();
+                                Double score = entry.getValue();
+
+                                docScoresMap.compute(docId, (key, rankedDoc) -> {
+                                    if (rankedDoc == null) {
+                                        RankedDocument doc = docsList.stream()
+                                                .filter(d -> d.getDocId().equals(docId))
+                                                .findFirst()
+                                                .orElse(null);
+
+                                        if (doc != null) {
+                                            return new RankedDocument(docId, doc.getUrl(), doc.getDocTitle(),
+                                                    score, 0, 0, doc.getTf());
+                                        }
+                                        return null;
+                                    } else {
+                                        rankedDoc.setRelevanceScore(rankedDoc.getRelevanceScore() + score);
+                                        return rankedDoc;
+                                    }
+                                });
+                            }
                         }
                     }
                 } finally {
@@ -160,6 +173,20 @@ public class RelevanceScorer {
 
         for (int i = 0; i < entries.size(); i++) {
             partitions.get(i % numPartitions).add(entries.get(i));
+        }
+
+        return partitions;
+    }
+
+    private List<List<String>> partitionArray(String[] array, int numPartitions) {
+        List<List<String>> partitions = new ArrayList<>(numPartitions);
+
+        for (int i = 0; i < numPartitions; i++) {
+            partitions.add(new ArrayList<>());
+        }
+
+        for (int i = 0; i < array.length; i++) {
+            partitions.get(i % numPartitions).add(array[i]);
         }
 
         return partitions;
