@@ -4,6 +4,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import cu.searchengine.model.RankedDocument;
@@ -28,53 +29,35 @@ public class RankerController {
     }
 
     public List<RankedDocument> rankDocuments(String[] wordsArray) {
-        Map<Integer, RankedDocument> docScoresMap = new HashMap<>();
+        Map<Integer, RankedDocument> docScoresMap = new ConcurrentHashMap<>();
 
-        // Create a map for faster lookup of InvertedIndexEntries by word
-        Map<String, InvertedIndexEntry> wordToEntryMap = invertedIndexData.stream()
-                .collect(Collectors.toMap(InvertedIndexEntry::getWord, entry -> entry));
+        // Create maps for faster lookup of InvertedIndexEntries and DFs by word
+        Map<String, List<RankedDocument>> wordToDocsMap = new HashMap<>();
+        Map<String, Integer> wordToDfMap = new HashMap<>();
 
+        // Prepare data structures for parallel processing
         for (String word : wordsArray) {
-            // Get the inverted index entry from the map
-            InvertedIndexEntry entry = wordToEntryMap.get(word);
+            InvertedIndexEntry entry = invertedIndexData.stream()
+                    .filter(e -> e.getWord().equals(word))
+                    .findFirst()
+                    .orElse(null);
 
-            if (entry == null || entry.getRankedPostings() == null || entry.getRankedPostings().isEmpty()) {
-                continue;
-            }
-
-            List<RankedDocument> docsList = entry.getRankedPostings();
-            int df = entry.getDf();
-
-            for (RankedDocument doc : docsList) {
-                Integer docId = doc.getDocId();
-                // Use the tf value directly from the RankedDocument
-                int tf = doc.getTf();
-
-                double relevanceScore = relevanceScorer.computeTFIDF(tf, df);
-                docScoresMap.compute(docId, (key, rankedDoc) -> {
-                    if (rankedDoc == null) {
-                        return new RankedDocument(docId, doc.getUrl(), doc.getDocTitle(), relevanceScore, 0, 0, tf);
-                    } else {
-                        rankedDoc.setRelevanceScore(rankedDoc.getRelevanceScore() + relevanceScore);
-                        return rankedDoc;
-                    }
-                });
-            }
-
-            // Normalize Relevance score
-            double[] sum = {0};
-            docScoresMap.forEach((key, rankedDoc) -> sum[0] += rankedDoc.getRelevanceScore());
-            if (sum[0] != 0) {
-                docScoresMap.forEach((key, rankedDoc) -> {
-                    rankedDoc.setRelevanceScore(rankedDoc.getRelevanceScore() / sum[0]);
-                });
+            if (entry != null && entry.getRankedPostings() != null && !entry.getRankedPostings().isEmpty()) {
+                wordToDocsMap.put(word, entry.getRankedPostings());
+                wordToDfMap.put(word, entry.getDf());
             }
         }
 
-        // Calculate popularity scores
+        // Process relevance scores in parallel
+        relevanceScorer.computeRelevanceScoresParallel(docScoresMap, wordsArray, wordToDocsMap, wordToDfMap);
+
+        // Normalize relevance scores in parallel
+        relevanceScorer.normalizeScoresParallel(docScoresMap);
+
+        // Calculate popularity scores (already multithreaded from previous implementation)
         docScoresMap = popularityScorer.calculatePopularityScores(docScoresMap);
 
-        // Calculate final scores
+        // Calculate final scores - this is relatively fast so keeping it sequential
         for (RankedDocument doc : docScoresMap.values()) {
             double normalizedRelevance = doc.getRelevanceScore();
             double normalizedPopularity = doc.getPopularityScore();
@@ -83,8 +66,13 @@ public class RankerController {
         }
 
         // Convert HashMap values to a List and sort by FinalScore
-        return docScoresMap.values().stream()
+        List<RankedDocument> result = docScoresMap.values().stream()
                 .sorted(Comparator.comparingDouble(RankedDocument::getFinalScore).reversed())
                 .toList();
+
+        // Clean up thread pools
+        relevanceScorer.shutdown();
+
+        return result;
     }
 }
