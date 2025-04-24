@@ -29,7 +29,9 @@ public class InvertedIndexService {
             logger.error("Error saving entries to MongoDB: {}", e.getMessage());
         }
     }
-
+    public int getCount() {
+        return (int) repository.count();
+    }
     public List<InvertedIndexEntry> getAll() {
         return repository.findAll();
     }
@@ -39,6 +41,7 @@ public class InvertedIndexService {
     }
 
     public List<InvertedIndexEntry> getByWords(List<String> words) {
+
         return repository.findAllById(words);
     }
 

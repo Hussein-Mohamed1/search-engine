@@ -35,9 +35,10 @@ public class DocumentService {
     }
 
     public List<Documents> getAllDocuments() {
+
         return documentsRepository.findAll();
     }
-
+    public int getNumberOfDocuments() {return (int) documentsRepository.count();}
     public Map<Integer, List<Integer>> getWebGraph() {
         List<Documents> documents = documentsRepository.findAll();
 
@@ -65,11 +66,13 @@ public class DocumentService {
     }
 
     public void addAll(List<Documents> buffer) {
+
         documentsRepository.saveAll(buffer);
     }
 
 
     public List<Documents> getDocumentsToIndex() {
+
         return documentsRepository.findByInvertedIndexProcessedFalse();
     }
 

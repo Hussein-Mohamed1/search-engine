@@ -37,13 +37,8 @@ public class PopularityScorer {
     }
 
     private Map<Integer, List<Integer>> buildWebGraph(Map<Integer, RankedDocument> documents) {
-        // TODO: i will Replace this with actual link extraction from our documents
-        // This is just a placeholder implementation
         Map<Integer, List<Integer>> webGraph = new HashMap<>();
         webGraph = documentService.getWebGraph();
-//        webGraph.put(1, Arrays.asList(2, 3));
-//        webGraph.put(2, Arrays.asList(3));
-//        webGraph.put(3, Arrays.asList(1));
 
         // Add any document that has no outgoing links as an empty list
         for (Integer docId : documents.keySet()) {

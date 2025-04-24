@@ -41,7 +41,7 @@ public class SearchController {
         for (String word : words) {
             lemmatizedWords.addAll(tokenizer.tokenize(word));
         }
-        int totalDocs = documentService.getAllDocuments().size();
+        int totalDocs = documentService.getNumberOfDocuments();
         RankerController ranker = new RankerController(totalDocs, documentService, invertedIndexService);
 
         List<RankedDocument> ranked = ranker.rankDocuments(lemmatizedWords.toArray(new String[0]));
@@ -58,8 +58,8 @@ public class SearchController {
     public Map<String, Object> stats() {
         Map<String, Object> stats = new HashMap<>();
         long start = System.nanoTime();
-        int totalDocuments = documentService.getAllDocuments().size();
-        int indexSize = invertedIndexService.getAll().size();
+        int totalDocuments = documentService.getNumberOfDocuments();
+        int indexSize = invertedIndexService.getCount();
         long end = System.nanoTime();
         stats.put("totalDocuments", totalDocuments);
         stats.put("invertedIndexSize", indexSize);
@@ -83,7 +83,7 @@ public class SearchController {
     public Map<String, Object> testBench(@RequestParam(value = "type", defaultValue = "default") String type) {
         Map<String, Object> result = new HashMap<>();
         long start = System.nanoTime();
-        int totalDocs = documentService.getAllDocuments().size();
+        int totalDocs = documentService.getNumberOfDocuments();
         RankerController ranker = new RankerController(totalDocs, documentService, invertedIndexService);
 
         List<RankedDocument> ranked = Collections.emptyList();
@@ -129,7 +129,7 @@ public class SearchController {
 
     @GetMapping("/example-ranker")
     public Map<String, Object> exampleRankerUsage() {
-        int totalDocs = documentService.getAllDocuments().size();
+        int totalDocs = documentService.getNumberOfDocuments();
         RankerController ranker = new RankerController(totalDocs, documentService, invertedIndexService);
 
         String[] queryWords = {"java", "search"};
