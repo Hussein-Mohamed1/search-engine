@@ -11,8 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.context.event.EventListener;
 
 @RestController
 @RequestMapping("/api")
@@ -23,34 +21,11 @@ public class SearchController {
     private final SearchService searchService;
     private final Tokenizer tokenizer = new Tokenizer();
 
-    // Cache for inverted index and document count to avoid repeated DB calls
-    private List<cu.searchengine.model.InvertedIndexEntry> cachedInvertedIndex;
-    private int cachedTotalDocs;
-    private long lastCacheUpdate = 0;
-    private static final long CACHE_TTL_MS = 60_000; // 1 minute
-
     @Autowired
     public SearchController(DocumentService documentService, InvertedIndexService invertedIndexService, SearchService searchService) {
         this.documentService = documentService;
         this.invertedIndexService = invertedIndexService;
         this.searchService = searchService;
-    }
-
-    @EventListener(ContextRefreshedEvent.class)
-    public void onApplicationEvent(ContextRefreshedEvent event) {
-        refreshCache();
-    }
-
-    private synchronized void refreshCache() {
-        cachedInvertedIndex = invertedIndexService.getAll();
-        cachedTotalDocs = documentService.getAllDocuments().size();
-        lastCacheUpdate = System.currentTimeMillis();
-    }
-
-    private void ensureCacheFresh() {
-        if (System.currentTimeMillis() - lastCacheUpdate > CACHE_TTL_MS) {
-            refreshCache();
-        }
     }
 
     @GetMapping("/search")
@@ -61,23 +36,19 @@ public class SearchController {
             response.put("pages", 0);
             return response;
         }
-        ensureCacheFresh();
         String[] words = query.toLowerCase().split("\\s+");
         List<String> lemmatizedWords = new ArrayList<>();
         for (String word : words) {
             lemmatizedWords.addAll(tokenizer.tokenize(word));
         }
-        // Use cached values for performance
-        RankerController ranker = new RankerController(cachedTotalDocs, documentService, invertedIndexService);
-        // Inject cached inverted index to avoid repeated DB calls
-        ranker.invertedIndexData = cachedInvertedIndex;
+        int totalDocs = documentService.getAllDocuments().size();
+        RankerController ranker = new RankerController(totalDocs, documentService, invertedIndexService);
 
         List<RankedDocument> ranked = ranker.rankDocuments(lemmatizedWords.toArray(new String[0]));
         int from = Math.min(page * size, ranked.size());
         int to = Math.min(from + size, ranked.size());
         List<RankedDocument> pagedResults = ranked.subList(from, to);
         int totalPages = (int) Math.ceil((double) ranked.size() / size);
-
         response.put("results", pagedResults);
         response.put("pages", totalPages);
         return response;
@@ -85,11 +56,10 @@ public class SearchController {
 
     @GetMapping("/stats")
     public Map<String, Object> stats() {
-        ensureCacheFresh();
         Map<String, Object> stats = new HashMap<>();
         long start = System.nanoTime();
-        int totalDocuments = cachedTotalDocs;
-        int indexSize = cachedInvertedIndex.size();
+        int totalDocuments = documentService.getAllDocuments().size();
+        int indexSize = invertedIndexService.getAll().size();
         long end = System.nanoTime();
         stats.put("totalDocuments", totalDocuments);
         stats.put("invertedIndexSize", indexSize);
@@ -104,7 +74,6 @@ public class SearchController {
     public Map<String, String> resetDb() {
         documentService.getAllDocuments().forEach(documentService::delete);
         invertedIndexService.deleteAll();
-        refreshCache();
         Map<String, String> resp = new HashMap<>();
         resp.put("status", "reset complete");
         return resp;
@@ -112,11 +81,10 @@ public class SearchController {
 
     @PostMapping("/testbench")
     public Map<String, Object> testBench(@RequestParam(value = "type", defaultValue = "default") String type) {
-        ensureCacheFresh();
         Map<String, Object> result = new HashMap<>();
         long start = System.nanoTime();
-        RankerController ranker = new RankerController(cachedTotalDocs, documentService, invertedIndexService);
-        ranker.invertedIndexData = cachedInvertedIndex;
+        int totalDocs = documentService.getAllDocuments().size();
+        RankerController ranker = new RankerController(totalDocs, documentService, invertedIndexService);
 
         List<RankedDocument> ranked = Collections.emptyList();
         String[] testWords;
@@ -161,9 +129,8 @@ public class SearchController {
 
     @GetMapping("/example-ranker")
     public Map<String, Object> exampleRankerUsage() {
-        ensureCacheFresh();
-        RankerController ranker = new RankerController(cachedTotalDocs, documentService, invertedIndexService);
-        ranker.invertedIndexData = cachedInvertedIndex;
+        int totalDocs = documentService.getAllDocuments().size();
+        RankerController ranker = new RankerController(totalDocs, documentService, invertedIndexService);
 
         String[] queryWords = {"java", "search"};
         String[] queryWords2 = {"java", "ranking"};
