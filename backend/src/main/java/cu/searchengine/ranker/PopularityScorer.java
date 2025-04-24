@@ -1,7 +1,6 @@
 package cu.searchengine.ranker;
 
 import cu.searchengine.model.RankedDocument;
-import cu.searchengine.repository.DocumentsRepository;
 import cu.searchengine.service.DocumentService;
 
 import java.util.*;
@@ -10,7 +9,7 @@ public class PopularityScorer {
     private static final double DAMPING = 0.85;
     private static final double EPSILON = 0.0001;
     private static final int MAX_ITERATIONS = 100;
-    private final DocumentService  documentService;
+    private final DocumentService documentService;
 
     public PopularityScorer(DocumentService documentService) {
 
@@ -19,7 +18,7 @@ public class PopularityScorer {
 
     public Map<Integer, RankedDocument> calculatePopularityScores(Map<Integer, RankedDocument> documents) {
         // build the web graph from the documents
-        Map<Integer, List<Integer>> webGraph = buildWebGraph(documents);
+        Map<Integer, Set<Integer>> webGraph = documentService.getWebGraph();
 
         Map<Integer, Double> pageRankScores = calculatePageRank(webGraph);
 
@@ -36,21 +35,21 @@ public class PopularityScorer {
         return documents;
     }
 
-    private Map<Integer, List<Integer>> buildWebGraph(Map<Integer, RankedDocument> documents) {
-        Map<Integer, List<Integer>> webGraph = new HashMap<>();
-        webGraph = documentService.getWebGraph();
+//    private Map<Integer, List<Integer>> buildWebGraph(Map<Integer, RankedDocument> documents) {
+//        Map<Integer, List<Integer>> webGraph = new HashMap<>();
+//        webGraph = documentService.getWebGraph();
+//
+//        // Add any document that has no outgoing links as an empty list
+//        for (Integer docId : documents.keySet()) {
+//            if (!webGraph.containsKey(docId)) {
+//                webGraph.put(docId, new ArrayList<>());
+//            }
+//        }
+//
+//        return webGraph;
+//    }
 
-        // Add any document that has no outgoing links as an empty list
-        for (Integer docId : documents.keySet()) {
-            if (!webGraph.containsKey(docId)) {
-                webGraph.put(docId, new ArrayList<>());
-            }
-        }
-
-        return webGraph;
-    }
-
-    private Map<Integer, Double> calculatePageRank(Map<Integer, List<Integer>> links) {
+    private Map<Integer, Double> calculatePageRank(Map<Integer, Set<Integer>> links) {
         // Get all unique pages
         Set<Integer> allPages = new HashSet<>();
         for (Integer page : links.keySet()) {
@@ -77,18 +76,20 @@ public class PopularityScorer {
             }
         }
 
+
         // Create reverse Graph
         Map<Integer, List<Integer>> incomingLinks = new HashMap<>();
         for (Integer page : allPages) {
             incomingLinks.put(page, new ArrayList<>());
         }
 
-        for (Map.Entry<Integer, List<Integer>> entry : links.entrySet()) {
+        for (Map.Entry<Integer, Set<Integer>> entry : links.entrySet()) {
             Integer source = entry.getKey();
             for (Integer target : entry.getValue()) {
                 incomingLinks.get(target).add(source);
             }
         }
+
 
         boolean converged = false;
         int iterations = 0;

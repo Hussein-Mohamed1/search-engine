@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Setter
@@ -24,12 +25,19 @@ public class Documents implements Comparable<Documents> {
     private List<String> subHeadings;
     private String content;
     private List<String> links;
+
+    @Getter
+    @Setter
     private boolean invertedIndexProcessed = false;
+    private Set<Integer> webGraph;
+
+    @Getter
+    private Set<Integer> incomingLinks;
 
     public Documents() {
     }
 
-    public Documents(int id, String url, String title, List<String> mainHeading, List<String> subHeading, String content, List<String> Links) {
+    public Documents(int id, String url, String title, List<String> mainHeading, List<String> subHeading, String content, List<String> Links, Set<Integer> webGraph) {
         this.id = id;
         this.url = url;
         this.title = title;
@@ -37,6 +45,7 @@ public class Documents implements Comparable<Documents> {
         this.subHeadings = subHeading;
         this.content = content;
         this.links = Links;
+        this.webGraph = webGraph;
     }
 
     // Alternative constructor for auto-generating IDs
@@ -48,14 +57,6 @@ public class Documents implements Comparable<Documents> {
         this.subHeadings = subHeading;
         this.content = content;
         this.links = Links;
-    }
-
-    public boolean isInvertedIndexProcessed() {
-        return invertedIndexProcessed;
-    }
-
-    public void setInvertedIndexProcessed(boolean invertedIndexProcessed) {
-        this.invertedIndexProcessed = invertedIndexProcessed;
     }
 
     @Override

@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -219,30 +220,23 @@ public class Crawler implements Runnable {
             return linkURL;
         }).filter(text -> !text.trim().isEmpty()).toList();
 
+        // --- Populate webGraph (outgoing links as IDs) using Java streams ---
+        HashSet<Integer> webGraph = links.stream()
+            .map(normalizer::normalize)
+            .filter(normalized -> normalized != null && !normalized.isEmpty())
+            .map(String::hashCode)
+            .collect(HashSet::new, HashSet::add, HashSet::addAll);
+
+        Documents document = new Documents(url, title, mainHeadings, subHeadings, content, links);
+        document.setWebGraph(webGraph); // set webGraph as outgoing link IDs
+
         // The correct approach - Always add current document to buffer
-        // By this point, we've already decided to process this URL
-        // It passed the robots.txt check, HEAD request, and is part of our crawl
-        // Also, Don't pay attention to duplicate insertions since the url is the key
-        buffer.add(new Documents(url, title, mainHeadings, subHeadings, content, links));
+        buffer.add(document);
 
         // save documents in batches of 100
         if (buffer.size() >= 100) {
             flushBuffer();
         }
-    }
-
-    // Saves a batch of documents
-    private synchronized void flushBuffer() {
-        if (buffer.isEmpty()) return;
-        try {
-            documentService.addAll(buffer);
-        } catch (Exception e) {
-            // Ignore duplicate key errors, log others
-            if (!e.getMessage().contains("duplicate key")) {
-                logger.error("Bulk insert error,{}", e.getMessage());
-            }
-        }
-        buffer.clear();
     }
 
     private void processPage(String url) throws IOException {
@@ -256,9 +250,22 @@ public class Crawler implements Runnable {
             String linkURL = link.attr("abs:href");
             String normalizedLinkURL = normalizer.normalize(linkURL);
             if (normalizedLinkURL == null || normalizedLinkURL.isEmpty()) continue;
-
+            
             addURLToQueue(normalizedLinkURL);
         }
+    }
+
+    private synchronized void flushBuffer() {
+        if (buffer.isEmpty()) return;
+        try {
+            documentService.addAll(buffer);
+        } catch (Exception e) {
+            // Ignore duplicate key errors, log others
+            if (!e.getMessage().contains("duplicate key")) {
+                logger.error("Bulk insert error,{}", e.getMessage());
+            }
+        }
+        buffer.clear();
     }
 
     private void shutdownExecutorService() {
