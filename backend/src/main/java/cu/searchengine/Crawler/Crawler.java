@@ -59,8 +59,8 @@ public class Crawler implements Runnable {
     @Autowired
     public Crawler(DocumentService documentService) {
         // Set default values for other fields as needed
-        this("lumos", // userAgent
-                1000, // MAX_PAGE_COUNT
+        this("Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.166 Safari/537.36", // userAgent
+                6000, // MAX_PAGE_COUNT
                 50, // numberOfThreads
                 1000, // queueCapacity
                 documentService);
@@ -222,10 +222,10 @@ public class Crawler implements Runnable {
 
         // --- Populate webGraph (outgoing links as IDs) using Java streams ---
         HashSet<Integer> webGraph = links.stream()
-            .map(normalizer::normalize)
-            .filter(normalized -> normalized != null && !normalized.isEmpty())
-            .map(String::hashCode)
-            .collect(HashSet::new, HashSet::add, HashSet::addAll);
+                .map(normalizer::normalize)
+                .filter(normalized -> normalized != null && !normalized.isEmpty())
+                .map(String::hashCode)
+                .collect(HashSet::new, HashSet::add, HashSet::addAll);
 
         Documents document = new Documents(url, title, mainHeadings, subHeadings, content, links);
         document.setWebGraph(webGraph); // set webGraph as outgoing link IDs
@@ -250,7 +250,7 @@ public class Crawler implements Runnable {
             String linkURL = link.attr("abs:href");
             String normalizedLinkURL = normalizer.normalize(linkURL);
             if (normalizedLinkURL == null || normalizedLinkURL.isEmpty()) continue;
-            
+
             addURLToQueue(normalizedLinkURL);
         }
     }
