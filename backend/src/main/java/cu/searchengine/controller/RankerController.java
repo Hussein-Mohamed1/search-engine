@@ -1,18 +1,18 @@
 package cu.searchengine.controller;
 
+import cu.searchengine.model.InvertedIndexEntry;
+import cu.searchengine.model.RankedDocument;
+import cu.searchengine.ranker.PopularityScorer;
+import cu.searchengine.ranker.RelevanceScorer;
+import cu.searchengine.service.DocumentService;
+import cu.searchengine.service.InvertedIndexService;
+
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
-import cu.searchengine.model.RankedDocument;
-import cu.searchengine.model.InvertedIndexEntry;
-import cu.searchengine.ranker.PopularityScorer;
-import cu.searchengine.ranker.RelevanceScorer;
-import cu.searchengine.service.DocumentService;
-import cu.searchengine.service.InvertedIndexService;
 
 public class RankerController {
     private RelevanceScorer relevanceScorer;
