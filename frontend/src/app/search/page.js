@@ -162,7 +162,7 @@ export default function Page() {
         data.results &&
         data.results.length > 0 && (
           <>
-            <SearchResults data={data.results} className="mx-8" />
+            <SearchResults data={data.results} className="mx-16" />
             {/* Pagination Section */}
             <div className="flex mx-auto">
               <Pagination pagesNum={data.pages} />

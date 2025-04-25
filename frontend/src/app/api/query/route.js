@@ -10,7 +10,7 @@ export async function GET(request) {
 
   try {
     const res = await fetch(
-      `${process.env.BACKEND_URL}/api/search?q=${encodeURIComponent(query)}&page=${crtPage}&size=${RESULTS_PER_PAGE}`
+      `${process.env.BACKEND_URL}/api/search?q=${encodeURIComponent(query)}&page=${crtPage - 1 >= 0 ? crtPage - 1 : 0}&size=${RESULTS_PER_PAGE}`
     );
     if (!res.ok) {
       return NextResponse.json({ status: res.status, message: "Backend error" }, { status: res.status });
