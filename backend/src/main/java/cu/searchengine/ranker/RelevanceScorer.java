@@ -1,5 +1,6 @@
 package cu.searchengine.ranker;
 
+import cu.searchengine.model.IndexDocument;
 import cu.searchengine.model.RankedDocument;
 
 import java.util.*;
@@ -31,7 +32,7 @@ public class RelevanceScorer {
 
     public void computeRelevanceScoresParallel(Map<Integer, RankedDocument> docScoresMap,
                                                String[] wordsArray,
-                                               Map<String, List<RankedDocument>> wordToDocsMap,
+                                               Map<String, List<IndexDocument>> wordToDocsMap,
                                                Map<String, Integer> wordToDfMap) {
         // Create partitions of words to process
         List<List<String>> wordPartitions = partitionArray(wordsArray, numThreads);
@@ -43,7 +44,7 @@ public class RelevanceScorer {
                 try {
                     // Process all words in this partition
                     for (String word : wordPartition) {
-                        List<RankedDocument> docsList = wordToDocsMap.get(word);
+                        List<IndexDocument> docsList = wordToDocsMap.get(word);
                         Integer df = wordToDfMap.get(word);
 
                         if (docsList == null || df == null || docsList.isEmpty()) {
@@ -53,7 +54,7 @@ public class RelevanceScorer {
                         // Calculate scores for each document for this word
                         Map<Integer, Double> partialScores = new HashMap<>();
 
-                        for (RankedDocument doc : docsList) {
+                        for (IndexDocument doc : docsList) {
                             Integer docId = doc.getDocId();
                             int tf = doc.getTf();
 
@@ -69,7 +70,7 @@ public class RelevanceScorer {
 
                                 docScoresMap.compute(docId, (key, rankedDoc) -> {
                                     if (rankedDoc == null) {
-                                        RankedDocument doc = docsList.stream()
+                                        IndexDocument doc = docsList.stream()
                                                 .filter(d -> d.getDocId().equals(docId))
                                                 .findFirst()
                                                 .orElse(null);

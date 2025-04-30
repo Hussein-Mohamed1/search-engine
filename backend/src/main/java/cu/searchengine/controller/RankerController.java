@@ -1,5 +1,6 @@
 package cu.searchengine.controller;
 
+import cu.searchengine.model.IndexDocument;
 import cu.searchengine.model.InvertedIndexEntry;
 import cu.searchengine.model.RankedDocument;
 import cu.searchengine.ranker.PopularityScorer;
@@ -31,7 +32,7 @@ public class RankerController {
         Map<Integer, RankedDocument> docScoresMap = new ConcurrentHashMap<>();
 
         // Create maps for faster lookup of InvertedIndexEntries and DFs by word
-        Map<String, List<RankedDocument>> wordToDocsMap = new HashMap<>();
+        Map<String, List<IndexDocument>> wordToDocsMap = new HashMap<>();
         Map<String, Integer> wordToDfMap = new HashMap<>();
 
         // Fetch only the needed inverted index entries for the query words

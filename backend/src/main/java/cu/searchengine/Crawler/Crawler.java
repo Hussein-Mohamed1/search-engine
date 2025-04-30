@@ -1,7 +1,6 @@
 package cu.searchengine.Crawler;
 
 import cu.searchengine.model.Documents;
-import cu.searchengine.model.WebDocument;
 import cu.searchengine.service.DocumentService;
 import cu.searchengine.utils.ResourceReader;
 import org.jsoup.Connection;
@@ -17,7 +16,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,7 +48,6 @@ public class Crawler implements Runnable {
     private final int WAIT_QUEUE_CAPACITY;
     private final AtomicInteger currentPage;
     private final ExecutorService executorService;
-    private final List<WebDocument> webDocuments;
     private final HashMap<String, Boolean> pages404;
     private final DocumentService documentService;
     private final List<Documents> buffer = new CopyOnWriteArrayList<>();
@@ -78,7 +75,6 @@ public class Crawler implements Runnable {
         this.resourceReader = new ResourceReader(new DefaultResourceLoader());
         this.WAIT_QUEUE_CAPACITY = queueCapacity;
         this.executorService = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, 10L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(this.WAIT_QUEUE_CAPACITY), new ThreadPoolExecutor.CallerRunsPolicy());
-        this.webDocuments = new ArrayList<>();
         this.pages404 = new HashMap<>();
 
         logger.info("Crawler initialized with userAgent={}, maxPages={}, threads={}, queueCapacity={}", userAgent, pgCount, numberOfThreads, queueCapacity);
@@ -305,9 +301,7 @@ public class Crawler implements Runnable {
         logger.info("PageCount: {}", currentPage.get());
         logger.info("URLQueue: {}", urlQueue.size());
         logger.info("VisitedURLSet: {}", visitedURLSet.size());
-        for (WebDocument webDocument : webDocuments) {
-            logger.info(String.valueOf(webDocument));
-        }
+
     }
 
 

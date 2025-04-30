@@ -23,17 +23,17 @@ public class InvertedIndexEntry {
     private String word; // The term in the inverted index
 
     private Integer df; // Document frequency (number of documents containing the term)
-   private List<RankedDocument> RankedPostings; // List of postings for documents containing the term
+    private List<IndexDocument> RankedPostings; // List of postings for documents containing the term
 
     // Ensure postings is never null to avoid MongoDB persistence issues
-    public List<RankedDocument> getPostings() {
+    public List<IndexDocument> getPostings() {
         if (RankedPostings == null) {
             RankedPostings = new ArrayList<>();
         }
         return RankedPostings;
     }
 
-    public void setPostings(List<RankedDocument> existingPostings) {
+    public void setPostings(List<IndexDocument> existingPostings) {
         this.RankedPostings = existingPostings;
     }
 
@@ -47,7 +47,7 @@ public class InvertedIndexEntry {
     public static class PostingEntry {
         private Integer docId; // Document ID
         private Integer tf; // Term frequency in the document
-        private Integer [] priorityPositions; // Positions of the term in the document
+        private Integer[] priorityPositions; // Positions of the term in the document
         private String docTitle;
         private String url;
 
