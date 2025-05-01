@@ -7,6 +7,8 @@ import cu.searchengine.service.DocumentService;
 import cu.searchengine.service.InvertedIndexService;
 import cu.searchengine.service.SearchService;
 import cu.searchengine.utils.Tokenizer;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,12 +22,19 @@ public class SearchController {
     private final InvertedIndexService invertedIndexService;
     private final SearchService searchService;
     private final Tokenizer tokenizer = new Tokenizer();
+    private RankerController ranker;
 
     @Autowired
     public SearchController(DocumentService documentService, InvertedIndexService invertedIndexService, SearchService searchService) {
         this.documentService = documentService;
         this.invertedIndexService = invertedIndexService;
         this.searchService = searchService;
+    }
+    @PostConstruct
+    public void init() {
+        // Initialize the ranker once after all dependencies are injected
+        int totalDocs = documentService.getNumberOfDocuments();
+        this.ranker = new RankerController(totalDocs, documentService, invertedIndexService);
     }
 
     @GetMapping("/search")
@@ -41,8 +50,6 @@ public class SearchController {
         for (String word : words) {
             lemmatizedWords.addAll(tokenizer.tokenize(word));
         }
-        int totalDocs = documentService.getNumberOfDocuments();
-        RankerController ranker = new RankerController(totalDocs, documentService, invertedIndexService);
 
         List<RankedDocument> ranked = ranker.rankDocuments(lemmatizedWords.toArray(new String[0]));
         int from = Math.min(page * size, ranked.size());
@@ -83,8 +90,7 @@ public class SearchController {
     public Map<String, Object> testBench(@RequestParam(value = "type", defaultValue = "default") String type) {
         Map<String, Object> result = new HashMap<>();
         long start = System.nanoTime();
-        int totalDocs = documentService.getNumberOfDocuments();
-        RankerController ranker = new RankerController(totalDocs, documentService, invertedIndexService);
+
 
         List<RankedDocument> ranked = Collections.emptyList();
         String[] testWords;
@@ -129,8 +135,6 @@ public class SearchController {
 
     @GetMapping("/example-ranker")
     public Map<String, Object> exampleRankerUsage() {
-        int totalDocs = documentService.getNumberOfDocuments();
-        RankerController ranker = new RankerController(totalDocs, documentService, invertedIndexService);
 
         String[] queryWords = {"java", "search"};
         String[] queryWords2 = {"java", "ranking"};
@@ -148,6 +152,7 @@ public class SearchController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("savedResults", res);
+
         return response;
     }
 }
