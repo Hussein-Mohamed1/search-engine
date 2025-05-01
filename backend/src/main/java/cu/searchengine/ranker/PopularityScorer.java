@@ -14,16 +14,16 @@ public class PopularityScorer {
     private final DocumentService documentService;
     private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
     private final ExecutorService executorService;
+    private final Map<Integer, Set<Integer>> webGraph;
 
     public PopularityScorer(DocumentService documentService) {
         this.documentService = documentService;
         this.executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        this.webGraph = documentService.getWebGraph(); // Initialize web graph once
     }
 
     public Map<Integer, RankedDocument> calculatePopularityScores(Map<Integer, RankedDocument> documents) {
-        // build the web graph from the documents
-        Map<Integer, Set<Integer>> webGraph = documentService.getWebGraph();
-
+        // Use the pre-built web graph
         Map<Integer, Double> pageRankScores = calculatePageRank(webGraph);
 
         for (Map.Entry<Integer, Double> entry : pageRankScores.entrySet()) {
@@ -35,9 +35,6 @@ public class PopularityScorer {
                 documents.get(docId).setPopularityScore(pageRankScore);
             }
         }
-
-        // Shutdown the executor service after we're done
-        executorService.shutdown();
 
         return documents;
     }

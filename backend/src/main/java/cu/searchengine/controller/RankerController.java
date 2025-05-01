@@ -72,6 +72,6 @@ public class RankerController {
 
     public void shutdown() {
         relevanceScorer.shutdown();
-        popularityScorer.shutdown(); // Assuming this method exists
+        popularityScorer.shutdown();
     }
 }
