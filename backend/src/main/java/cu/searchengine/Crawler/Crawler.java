@@ -200,12 +200,12 @@ public class Crawler implements Runnable {
                 logger.debug("URL is accessible. status: {}", statusCode);
                 return true;
             } else {
-                logger.info("URL is not accessible. Status: {}", statusCode);
+                logger.debug("URL is not accessible. Status: {}", statusCode);
                 pages404.put(url, true);
                 return false;
             }
         } catch (IOException e) {
-            logger.info("Error during HEAD request: {}", e.getMessage());
+            logger.debug("Error during HEAD request: {}", e.getMessage());
             return false;
         }
     }
@@ -258,8 +258,20 @@ public class Crawler implements Runnable {
     }
 
     private void processPage(String url) throws IOException {
-        // Increase timeout to 10 seconds (10000 ms)
-        Document doc = Jsoup.connect(url).timeout(GLOBAL_TIMEOUT).get();
+        Document doc;
+        try {
+            Connection.Response response = Jsoup.connect(url).method(Connection.Method.GET).timeout(GLOBAL_TIMEOUT).execute();
+            int statusCode = response.statusCode();
+            if (statusCode >= 200 && statusCode < 400) {
+                doc = response.parse();
+            } else {
+                pages404.put(url, true);
+                return;
+            }
+        } catch (IOException e) {
+            return;
+        }
+
         parseDocument(doc);
         logger.debug("Thread {}: Crawling URL: {}", Thread.currentThread().getName(), url);
 

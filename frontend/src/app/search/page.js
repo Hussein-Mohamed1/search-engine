@@ -1,42 +1,154 @@
 "use client";
 import { redirect, useSearchParams } from "next/navigation";
 import useSWR from "swr";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { SearchBar } from "@/components/searchBar";
 import Link from "next/link";
 import SearchResults from "@/components/searchResults";
 import LoadingIcons from "react-loading-icons";
 import { Pagination } from "@/components/pagination";
 
-const fetcher = (...args) => fetch(...args).then((res) => res.json());
+// Enhanced fetcher with error handling
+const fetcher = async (url) => {
+  const res = await fetch(url);
+  
+  // If the response is not ok, throw an error
+  if (!res.ok) {
+    const error = new Error('An error occurred while fetching the data.');
+    error.info = await res.json();
+    error.status = res.status;
+    throw error;
+  }
+  
+  return res.json();
+};
+
+// Create a cache key generator for better cache management
+const createCacheKey = (query, page) => {
+  return `search:${query}:page:${page}`;
+};
 
 export default function Page() {
   const searchParams = useSearchParams();
-  if (!searchParams.has("q") || searchParams.get("q").trim() === "")
+  // Early return if no query
+  if (!searchParams.has("q") || searchParams.get("q").trim() === "") {
     redirect("/");
-
-  const { data, error, isLoading } = useSWR(
+  }
+  
+  const query = searchParams.get("q");
+  const page = searchParams.get("page") || "1";
+  const [scrolled, setScrolled] = useState(false);
+  
+  // Use the cache key for better cache management
+  const { data, error, isLoading, mutate } = useSWR(
     `/api/query?${searchParams.toString()}`,
-    fetcher
+    fetcher,
+    {
+      // Configure SWR cache options
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      refreshWhenOffline: false,
+      refreshWhenHidden: false,
+      dedupingInterval: 5000,
+      keepPreviousData: true,
+      
+      // Set a longer stale time - data remains fresh for 5 minutes
+      focusThrottleInterval: 300000,
+      
+      // Custom compare function to determine if the data has changed
+      compare: (a, b) => {
+        // Simple deep comparison for search results
+        if (!a || !b) return false;
+        if (a.query !== b.query) return false;
+        if (a.pages !== b.pages) return false;
+        if (!a.results || !b.results) return false;
+        if (a.results.length !== b.results.length) return false;
+        
+        // Further comparison could be implemented based on your data structure
+        return true;
+      },
+      
+      // Callback when data is successfully fetched
+      onSuccess: (data) => {
+        // Store successful queries in localStorage for offline use
+        try {
+          const cacheKey = createCacheKey(query, page);
+          const cachedQueriesJson = localStorage.getItem('cachedSearchQueries') || '{}';
+          const cachedQueries = JSON.parse(cachedQueriesJson);
+          
+          // Store this result with timestamp
+          cachedQueries[cacheKey] = {
+            data,
+            timestamp: Date.now()
+          };
+          
+          // Limit cache size (optional)
+          const cacheEntries = Object.entries(cachedQueries);
+          if (cacheEntries.length > 50) { // Store max 50 queries
+            // Sort by timestamp and keep most recent
+            const sortedEntries = cacheEntries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+            const newCache = Object.fromEntries(sortedEntries.slice(0, 50));
+            localStorage.setItem('cachedSearchQueries', JSON.stringify(newCache));
+          } else {
+            localStorage.setItem('cachedSearchQueries', JSON.stringify(cachedQueries));
+          }
+        } catch (err) {
+          console.error("Error caching search results:", err);
+        }
+      }
+    }
   );
 
-
-  const [scrolled, setScrolled] = useState(false);
+  // Try to load from cache while waiting for fetch
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY >50);
+    if (isLoading) {
+      try {
+        const cacheKey = createCacheKey(query, page);
+        const cachedQueriesJson = localStorage.getItem('cachedSearchQueries') || '{}';
+        const cachedQueries = JSON.parse(cachedQueriesJson);
+        
+        if (cachedQueries[cacheKey]) {
+          const cachedData = cachedQueries[cacheKey].data;
+          const cacheAge = Date.now() - cachedQueries[cacheKey].timestamp;
+          
+          // Use cache if it's less than 1 hour old
+          if (cacheAge < 3600000) {
+            // Use cached data while waiting for fresh data
+            mutate(cachedData, false);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading cached search results:", err);
+      }
+    }
+  }, [query, page, isLoading, mutate]);
+
+  // Scroll effect
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const noResults =
-    !isLoading &&
-    !error &&
-    (!data || !data.results || data.results.length === 0);
+  // Function to clear search cache (could be used for a "clear cache" button)
+  const clearSearchCache = () => {
+    try {
+      localStorage.removeItem('cachedSearchQueries');
+      // Force revalidation of current query
+      mutate();
+    } catch (err) {
+      console.error("Error clearing search cache:", err);
+    }
+  };
+
+  // Check for no results - make sure this is defined before using it
+  const noResults = !isLoading && 
+                   !error && 
+                   (!data || !data.results || data.results.length === 0);
 
   return (
     <div className="flex flex-col space-y-8 my-22 md:my-8 min-h-screen">
       {/* Search Bar (Smoothly Transitions on Scroll) */}
-
       <div
         onMouseEnter={() => setScrolled(false)}
         onMouseLeave={() => setScrolled(window.scrollY > 1 ? true : false)}
@@ -52,13 +164,13 @@ export default function Page() {
           </div>
         </Link>
         <SearchBar
-          className="items-center transition-all duration-300 w-52 md:w-[32em] h-10 "
+          className="items-center transition-all duration-300 w-52 md:w-[32em] h-10"
           variant={scrolled ? "minimized" : "search"}
         />
       </div>
 
       {/* Loading indicator */}
-      {isLoading && (
+      {isLoading && !data && (
         <div className="flex flex-col items-center justify-center py-[20vh] max-w-xl mx-auto text-center">
           <div className="text-white">
             <LoadingIcons.Circles className="size-[8em]" />
@@ -94,7 +206,7 @@ export default function Page() {
             </p>
             <div className="flex flex-col space-y-3">
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => mutate()}
                 className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-300"
               >
                 Try Again
@@ -133,7 +245,7 @@ export default function Page() {
             </h3>
             <p className="text-white/90 mb-4">
               We couldn&apos;t find any matches for &quot;
-              <span className="font-semibold">{searchParams.get("q")}</span>
+              <span className="font-semibold">{query}</span>
               &quot;.
             </p>
             <div className="text-white/80 text-sm mb-6">
@@ -155,20 +267,27 @@ export default function Page() {
         </div>
       )}
 
-      {/* Search results */}
-      {!isLoading &&
-        !error &&
-        data &&
-        data.results &&
-        data.results.length > 0 && (
-          <>
-            <SearchResults data={data.results} className="mx-16" />
-            {/* Pagination Section */}
-            <div className="flex mx-auto">
-              <Pagination pagesNum={data.pages} />
+      {/* Search results - show even during loading if we have cached data */}
+      {data && data.results && data.results.length > 0 && (
+        <>
+          {/* Show loading indicator on top of results when refreshing */}
+          {isLoading && (
+            <div className="fixed top-20 right-8 z-50">
+              <div className="bg-blue-600/80 text-white px-3 py-2 rounded-lg shadow-lg flex items-center">
+                <LoadingIcons.Oval height={20} width={20} className="mr-2" />
+                <span>Refreshing results...</span>
+              </div>
             </div>
-          </>
-        )}
+          )}
+          
+          <SearchResults data={data.results} className="mx-16" />
+          
+          {/* Pagination Section */}
+          <div className="flex mx-auto">
+            <Pagination pagesNum={data.pages} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
