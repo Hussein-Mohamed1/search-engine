@@ -72,6 +72,5 @@ public class RankerController {
 
     public void shutdown() {
         relevanceScorer.shutdown();
-        popularityScorer.shutdown();
     }
 }
