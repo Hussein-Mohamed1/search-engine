@@ -1,6 +1,7 @@
 package cu.searchengine.Search;
 
 import cu.searchengine.controller.RankerController;
+import cu.searchengine.model.Documents;
 import cu.searchengine.model.RankedDocument;
 import cu.searchengine.model.SearchResult;
 import cu.searchengine.service.DocumentService;
@@ -8,11 +9,18 @@ import cu.searchengine.service.InvertedIndexService;
 import cu.searchengine.service.SearchService;
 import cu.searchengine.utils.Tokenizer;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -25,11 +33,13 @@ public class SearchController {
     private RankerController ranker;
 
     @Autowired
-    public SearchController(DocumentService documentService, InvertedIndexService invertedIndexService, SearchService searchService) {
+    public SearchController(DocumentService documentService, InvertedIndexService invertedIndexService,
+                            SearchService searchService) {
         this.documentService = documentService;
         this.invertedIndexService = invertedIndexService;
         this.searchService = searchService;
     }
+
     @PostConstruct
     public void init() {
         // Initialize the ranker once after all dependencies are injected
@@ -38,27 +48,82 @@ public class SearchController {
     }
 
     @GetMapping("/search")
-    public Map<String, Object> search(@RequestParam("q") String query, @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "10") int size) {
+    public Map<String, Object> search(@RequestParam("q") String query,
+                                      @RequestParam(value = "page", defaultValue = "0") int page,
+                                      @RequestParam(value = "size", defaultValue = "10") int size) {
         Map<String, Object> response = new HashMap<>();
+
         if (query == null || query.trim().isEmpty()) {
             response.put("results", Collections.emptyList());
             response.put("pages", 0);
             return response;
         }
-        String[] words = query.toLowerCase().split("\\s+");
-        List<String> lemmatizedWords = new ArrayList<>();
-        for (String word : words) {
-            lemmatizedWords.addAll(tokenizer.tokenize(word));
+
+        // Process the query to extract phrases and individual words
+        QueryProcessor queryProcessor = new QueryProcessor(query, tokenizer);
+        List<String> lemmatizedWords = queryProcessor.getLemmatizedWords();
+        List<String[]> phrases = queryProcessor.getPhrases();
+
+        // Run ranking and phrase filtering in a separate thread
+        CompletableFuture<List<RankedDocument>> rankedFuture = CompletableFuture.supplyAsync(() -> {
+            List<RankedDocument> ranked = ranker.rankDocuments(lemmatizedWords.toArray(new String[0]));
+            if (!phrases.isEmpty()) {
+                ranked = filterByPhraseMatch(ranked, phrases);
+            }
+            return ranked;
+        });
+
+        List<RankedDocument> ranked;
+        try {
+            ranked = rankedFuture.get();
+        } catch (InterruptedException | ExecutionException e) {
+            response.put("results", Collections.emptyList());
+            response.put("pages", 0);
+            return response;
         }
 
-        List<RankedDocument> ranked = ranker.rankDocuments(lemmatizedWords.toArray(new String[0]));
-        int from = Math.min(page * size, ranked.size());
+        int validPage = page >= 0 ? page : 0;
+        int from = Math.min(validPage * size, ranked.size());
         int to = Math.min(from + size, ranked.size());
         List<RankedDocument> pagedResults = ranked.subList(from, to);
         int totalPages = (int) Math.ceil((double) ranked.size() / size);
+
         response.put("results", pagedResults);
         response.put("pages", totalPages);
         return response;
+    }
+
+    private List<RankedDocument> filterByPhraseMatch(List<RankedDocument> rankedDocs, List<String[]> phrases) {
+        int threads = Math.min(16, Runtime.getRuntime().availableProcessors() * 2);
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+
+        try {
+            List<CompletableFuture<RankedDocument>> futures = rankedDocs.stream()
+                .map(doc -> CompletableFuture.supplyAsync(() -> {
+                    Documents fullDoc = documentService.getDocumentById(doc.getDocId());
+                    if (fullDoc == null)
+                        return null;
+
+                    String content = fullDoc.getContent().toLowerCase();
+                    String title = fullDoc.getTitle().toLowerCase();
+
+                    boolean allMatch = phrases.stream().allMatch(phrase -> {
+                        String phraseStr = String.join(" ", phrase);
+                        return content.contains(phraseStr) || title.contains(phraseStr);
+                    });
+                    return allMatch ? doc : null;
+                }, executor))
+                .toList();
+
+            List<RankedDocument> result = futures.stream()
+                .map(CompletableFuture::join)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+            return result;
+        } finally {
+            executor.shutdown();
+        }
     }
 
     @GetMapping("/stats")
@@ -90,7 +155,6 @@ public class SearchController {
     public Map<String, Object> testBench(@RequestParam(value = "type", defaultValue = "default") String type) {
         Map<String, Object> result = new HashMap<>();
         long start = System.nanoTime();
-
 
         List<RankedDocument> ranked = Collections.emptyList();
         String[] testWords;
@@ -142,10 +206,12 @@ public class SearchController {
         List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
         List<RankedDocument> rankedResults2 = ranker.rankDocuments(queryWords2);
 
-        SearchResult result1 = SearchResult.builder().query("java Search").results(rankedResults).timestamp(System.currentTimeMillis()).build();
+        SearchResult result1 = SearchResult.builder().query("java Search").results(rankedResults)
+                .timestamp(System.currentTimeMillis()).build();
         searchService.saveSearchResult(result1);
 
-        SearchResult result2 = SearchResult.builder().query("java ranking").results(rankedResults2).timestamp(System.currentTimeMillis()).build();
+        SearchResult result2 = SearchResult.builder().query("java ranking").results(rankedResults2)
+                .timestamp(System.currentTimeMillis()).build();
         searchService.saveSearchResult(result2);
 
         List<SearchResult> res = searchService.getResultsByQuery("java Search");
@@ -154,5 +220,43 @@ public class SearchController {
         response.put("savedResults", res);
 
         return response;
+    }
+
+    @Getter
+    private static class QueryProcessor {
+        private final List<String> lemmatizedWords = new ArrayList<>();
+        private final List<String[]> phrases = new ArrayList<>();
+
+        public QueryProcessor(String query, Tokenizer tokenizer) {
+            // Pattern to find phrases in quotes
+            Pattern phrasePattern = Pattern.compile("\"([^\"]*)\"");
+            Matcher phraseMatcher = phrasePattern.matcher(query);
+
+            // Extract phrases and replace them with empty strings
+            StringBuilder remainingQuery = new StringBuilder();
+            while (phraseMatcher.find()) {
+                String phrase = phraseMatcher.group(1).toLowerCase();
+                if (!phrase.trim().isEmpty()) {
+                    String[] phraseWords = phrase.split("\\s+");
+                    // Add each phrase word to lemmatizedWords (to ensure we get documents with these words)
+                    for (String word : phraseWords) {
+                        lemmatizedWords.addAll(tokenizer.tokenize(word));
+                    }
+                    // Store the original phrase for exact matching
+                    phrases.add(phraseWords);
+                }
+                // Replace the phrase with empty string
+                phraseMatcher.appendReplacement(remainingQuery, "");
+            }
+            phraseMatcher.appendTail(remainingQuery);
+
+            // Process remaining individual words
+            String[] words = remainingQuery.toString().toLowerCase().split("\\s+");
+            for (String word : words) {
+                if (!word.trim().isEmpty()) {
+                    lemmatizedWords.addAll(tokenizer.tokenize(word));
+                }
+            }
+        }
     }
 }
