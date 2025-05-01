@@ -155,10 +155,4 @@ public class SearchController {
 
         return response;
     }
-    @PreDestroy
-    public void cleanup() {
-        if (ranker != null) {
-            ranker.shutdown();
-        }
-    }
 }
