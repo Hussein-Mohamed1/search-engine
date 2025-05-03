@@ -6,26 +6,77 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class URLNormalizer {
     private static final Logger logger = LoggerFactory.getLogger(URLNormalizer.class);
 
+    // Set of protocols we want to accept
+    private static final Set<String> VALID_PROTOCOLS = new HashSet<>(Arrays.asList("http", "https"));
+
+    // Pattern to detect non-ASCII characters in URLs
+    private static final Pattern NON_ASCII_PATTERN = Pattern.compile("[^\\x00-\\x7F]");
+
+    // Known problematic URL patterns
+    private static final Set<String> PROBLEMATIC_PATTERNS = new HashSet<>(Arrays.asList("mailto:", "javascript:", "tel:", "ftp:", "file:", "#", "data:", "about:"));
+
     public String normalize(String rawURL) {
+        if (rawURL == null || rawURL.isEmpty()) return "";
+
+        // Quick check for problematic URL patterns
+        for (String pattern : PROBLEMATIC_PATTERNS) {
+            if (rawURL.contains(pattern)) {
+                logger.debug("Skipping URL with problematic pattern: {}", rawURL);
+                return "";
+            }
+        }
+
+        // Check for non-ASCII characters
+        if (NON_ASCII_PATTERN.matcher(rawURL).find()) {
+            try {
+                // Try to encode the URL properly
+                URI uri = new URI(rawURL);
+                rawURL = uri.toASCIIString();
+            } catch (URISyntaxException e) {
+                logger.debug("URL contains non-ASCII characters and cannot be parsed: {}", rawURL);
+                return "";
+            }
+        }
+
         try {
-            if (rawURL == null || rawURL.isEmpty()) return "";
+            // First, try to parse as is
+            String url = rawURL.trim();
+
+            // If URL doesn't start with a protocol, add https://
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                url = "https://" + url;
+            }
 
             // Lowercase URL
-            String lowerCaseURL = rawURL.toLowerCase();
+            String lowerCaseURL = url.toLowerCase();
             URI uri = new URI(lowerCaseURL);
 
-            // Normalize scheme (http/https -> https)
+            // Validate protocol
             String scheme = uri.getScheme();
-            if (scheme == null) scheme = "https";
-            if (scheme.equals("http") || scheme.equals("https")) scheme = "https";
+            if (scheme == null || !VALID_PROTOCOLS.contains(scheme)) {
+                logger.debug("Invalid protocol in URL: {}", rawURL);
+                return "";
+            }
+
+            // Always use https
+            scheme = "https";
+
+            // Get host and validate
+            String host = uri.getHost();
+            if (host == null || host.isEmpty()) {
+                logger.debug("Invalid host in URL: {}", rawURL);
+                return "";
+            }
 
             // Remove "www." prefix
-            String host = uri.getHost();
-            if (host != null && host.startsWith("www.")) {
+            if (host.startsWith("www.")) {
                 host = host.substring(4);
             }
 
@@ -40,9 +91,6 @@ public class URLNormalizer {
             } else if (path.length() > 1 && path.endsWith("/")) {
                 path = path.substring(0, path.length() - 1);
             }
-
-            // Remove fragments
-            // (already handled by URI, as getPath() does not include fragment)
 
             // Normalize query parameters: sort and filter empty
             String normalizedQuery = null;
@@ -70,25 +118,28 @@ public class URLNormalizer {
             if (normalizedQuery != null) {
                 result.append("?").append(normalizedQuery);
             }
+
             return result.toString();
 
         } catch (URISyntaxException e) {
-            logger.debug("Invalid URL: {}", rawURL);
+            logger.debug("Invalid URL structure: {} - {}", rawURL, e.getMessage());
+            return "";
+        } catch (Exception e) {
+            logger.debug("Error normalizing URL {}: {}", rawURL, e.getMessage());
             return "";
         }
     }
 
     public static void main(String[] args) {
-        String rawURL = "http://example.com:8080/path/to/resource";
-        String raw = "http://example.com:8080/path/to/resource#section1/file";
+        URLNormalizer normalizer = new URLNormalizer();
 
-        try {
-            URLNormalizer normalizer = new URLNormalizer();
-            String normalizedURL = normalizer.normalize(raw);
-            logger.info(normalizedURL);
-        } catch (Exception e) {
-            logger.error(e.getMessage());
+        // Test cases
+        String[] testUrls = {"http://example.com:8080/path/to/resource", "http://example.com:8080/path/to/resource#section1/file", "https://pa.wikisource.org/wiki/ਮੁੱਖ_ਸਫ਼ਾ", "www.example.com", "example.com/path", "mailto:user@example.com", "javascript:alert('test')", "https://example.com/path with spaces", "https://example.com/path%20with%20encoded%20spaces"};
+
+        for (String url : testUrls) {
+            System.out.println("Original: " + url);
+            System.out.println("Normalized: " + normalizer.normalize(url));
+            System.out.println();
         }
     }
-
 }

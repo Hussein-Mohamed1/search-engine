@@ -5,6 +5,7 @@ import cu.searchengine.service.DocumentService;
 import cu.searchengine.utils.ResourceReader;
 import lombok.Setter;
 import org.jsoup.Connection;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -52,7 +53,7 @@ public class Crawler implements Runnable {
     private final ExecutorService executorService;
     private final HashMap<String, Boolean> pages404;
     private final DocumentService documentService;
-    private final List<Documents> buffer = new CopyOnWriteArrayList<>();
+    private final BlockingQueue<Documents> buffer = new LinkedBlockingQueue<>();
     static final int GLOBAL_TIMEOUT = 10_000;
 
     // File name for serialization
@@ -66,8 +67,8 @@ public class Crawler implements Runnable {
         // Set default values for other fields as needed
         this("Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.166 Safari/537.36", // userAgent
                 6000, // MAX_PAGE_COUNT
-                50, // numberOfThreads
-                1000, // queueCapacity
+                512, // numberOfThreads
+                60000, // queueCapacity
                 documentService);
     }
 
@@ -90,7 +91,7 @@ public class Crawler implements Runnable {
         // Try to restore previous state or load initial state if restoration fails
         if (!restoreState()) {
             // Load visited URLs from DB to persist across runs
-            loadVisitedUrlsFromDb();
+//            loadVisitedUrlsFromDb();
             loadSeeds();
         }
 
@@ -120,7 +121,7 @@ public class Crawler implements Runnable {
         // Change the while condition to prevent possible thread starvation
         // Note: In previous condition, !urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT,
         // if crawling is over and queue is empty but currentPage.get() < MAX_PAGE_COUNT is true, this thread will get starved
-        while (!urlQueue.isEmpty() && currentPage.get() < MAX_PAGE_COUNT) {
+        while (!urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT) {
             String url = urlQueue.poll();
             if (url == null) continue;
 
@@ -192,7 +193,7 @@ public class Crawler implements Runnable {
         }
     }
 
-        private boolean headRequest(String url) {
+    private boolean headRequest(String url) {
         try {
             Connection.Response response = Jsoup.connect(url).method(Connection.Method.OPTIONS).timeout(GLOBAL_TIMEOUT).execute();
             int statusCode = response.statusCode();
@@ -257,18 +258,32 @@ public class Crawler implements Runnable {
         }
     }
 
-    private void processPage(String url) throws IOException {
+    private void processPage(String url) {
         Document doc;
         try {
-            Connection.Response response = Jsoup.connect(url).method(Connection.Method.GET).timeout(GLOBAL_TIMEOUT).execute();
+            Connection.Response response = Jsoup.connect(url)
+                    .method(Connection.Method.GET)
+                    .timeout(GLOBAL_TIMEOUT)
+                    .followRedirects(true)
+                    .execute();
+
             int statusCode = response.statusCode();
-            if (statusCode >= 200 && statusCode < 400) {
+            if (statusCode >= 200 && statusCode < 300) {
+                // Only process successful responses (2xx status codes)
                 doc = response.parse();
             } else {
+                logger.info("Error with status code {} at {}", statusCode, url);
                 pages404.put(url, true);
                 return;
             }
+        } catch (HttpStatusException e) {
+            // JSoup throws this for 404 and other HTTP errors
+            logger.debug("HTTP status error {}: {} at {}", e.getStatusCode(), e.getMessage(), url);
+            pages404.put(url, true);
+            return;
         } catch (IOException e) {
+            logger.debug("IO error while crawling {}: {}", url, e.getMessage());
+            pages404.put(url, true);
             return;
         }
 
@@ -287,6 +302,7 @@ public class Crawler implements Runnable {
 
     private synchronized void flushBuffer() {
         if (buffer.isEmpty()) return;
+        logger.info("Thread {}: Flushing buffer with size {}", Thread.currentThread().getName(), buffer.size());
         try {
             documentService.addAll(buffer);
         } catch (Exception e) {
@@ -344,7 +360,7 @@ public class Crawler implements Runnable {
      * Saves the current state of the crawler to disk for recovery
      */
     public synchronized void saveState() {
-        logger.info("Saving crawler state: {} pages crawled, {} URLs in queue", currentPage.get(), urlQueue.size());
+        logger.info("Saving crawler state: {} pages crawled, {} URLs in queue, pages404: {}", currentPage.get(), urlQueue.size(), pages404.size());
         List<String> queueArray = new ArrayList<>(urlQueue);
         // Wrap all state data in a single object
         CrawlerState fullState = new CrawlerState(
@@ -364,6 +380,7 @@ public class Crawler implements Runnable {
 
     /**
      * Restores the crawler state from disk
+     *
      * @return true if state was successfully restored, false otherwise
      */
     @SuppressWarnings("unchecked")
