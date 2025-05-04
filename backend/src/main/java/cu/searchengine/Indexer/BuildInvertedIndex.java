@@ -1,6 +1,6 @@
 package cu.searchengine.Indexer;
 
-import cu.searchengine.model.WebDocument;
+//import cu.searchengine.model.WebDocument;
 import cu.searchengine.utils.Tokenizer;
 
 import cu.searchengine.model.Documents;

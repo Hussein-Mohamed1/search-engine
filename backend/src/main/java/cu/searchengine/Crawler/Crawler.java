@@ -1,10 +1,11 @@
 package cu.searchengine.Crawler;
 
 import cu.searchengine.model.Documents;
-import cu.searchengine.model.WebDocument;
 import cu.searchengine.service.DocumentService;
 import cu.searchengine.utils.ResourceReader;
+import lombok.Setter;
 import org.jsoup.Connection;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -15,13 +16,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -50,19 +52,27 @@ public class Crawler implements Runnable {
     private final int WAIT_QUEUE_CAPACITY;
     private final AtomicInteger currentPage;
     private final ExecutorService executorService;
-    private final List<WebDocument> webDocuments;
     private final HashMap<String, Boolean> pages404;
     private final DocumentService documentService;
-    private final List<Documents> buffer = new CopyOnWriteArrayList<>();
+    private final BlockingQueue<Documents> buffer = new LinkedBlockingQueue<>();
     static final int GLOBAL_TIMEOUT = 10_000;
+
+    // AtomicBoolean for checkpoint coordination across threads
+    private final AtomicBoolean checkpointLock = new AtomicBoolean(false);
+
+    // File name for serialization
+    private static final String STATE_FILE = "crawler_state.ser";
+
+    // Checkpoint frequency (save state every X pages)
+    private static final int CHECKPOINT_FREQUENCY = 100;
 
     @Autowired
     public Crawler(DocumentService documentService) {
         // Set default values for other fields as needed
         this("Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.166 Safari/537.36", // userAgent
-                6000, // MAX_PAGE_COUNT
+                6500, // MAX_PAGE_COUNT
                 50, // numberOfThreads
-                1000, // queueCapacity
+                60000, // queueCapacity
                 documentService);
     }
 
@@ -78,14 +88,19 @@ public class Crawler implements Runnable {
         this.resourceReader = new ResourceReader(new DefaultResourceLoader());
         this.WAIT_QUEUE_CAPACITY = queueCapacity;
         this.executorService = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, 10L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(this.WAIT_QUEUE_CAPACITY), new ThreadPoolExecutor.CallerRunsPolicy());
-        this.webDocuments = new ArrayList<>();
         this.pages404 = new HashMap<>();
 
         logger.info("Crawler initialized with userAgent={}, maxPages={}, threads={}, queueCapacity={}", userAgent, pgCount, numberOfThreads, queueCapacity);
 
-        // Load visited URLs from DB to persist across runs
-        loadVisitedUrlsFromDb();
-        loadSeeds();
+        // Try to restore previous state or load initial state if restoration fails
+        if (!restoreState()) {
+            // Load visited URLs from DB to persist across runs
+//            loadVisitedUrlsFromDb();
+            loadSeeds();
+        }
+
+        // Add shutdown hook to save state when application exits
+        Runtime.getRuntime().addShutdownHook(new Thread(this::saveState));
     }
 
     private void loadVisitedUrlsFromDb() {
@@ -110,7 +125,7 @@ public class Crawler implements Runnable {
         // Change the while condition to prevent possible thread starvation
         // Note: In previous condition, !urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT,
         // if crawling is over and queue is empty but currentPage.get() < MAX_PAGE_COUNT is true, this thread will get starved
-        while (!urlQueue.isEmpty() && currentPage.get() < MAX_PAGE_COUNT) {
+        while (!urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT) {
             String url = urlQueue.poll();
             if (url == null) continue;
 
@@ -127,14 +142,11 @@ public class Crawler implements Runnable {
             }
 
             try {
-                if (!headRequest(url)) continue;
+//                if (!headRequest(url)) continue;
 
                 // This block ensures the crawler does not exceed the maximum allowed pages.
                 // It increments the page count, checks if it exceeds the limit, and if so, decrements and exits.
-                if (currentPage.incrementAndGet() > MAX_PAGE_COUNT) {
-                    currentPage.decrementAndGet();
-                    return;
-                }
+
 
                 logger.debug("[{}] Processing page: {}", threadName, normalizedURL);
                 processPage(normalizedURL);
@@ -233,15 +245,59 @@ public class Crawler implements Runnable {
         // The correct approach - Always add current document to buffer
         buffer.add(document);
 
-        // save documents in batches of 100
-        if (buffer.size() >= 100) {
-            flushBuffer();
+        int currentCount = currentPage.incrementAndGet();
+        if (currentCount > MAX_PAGE_COUNT) {
+            currentPage.decrementAndGet();
+            return;
+        }
+
+        if (currentCount % CHECKPOINT_FREQUENCY == 0) {
+            // Try to acquire the lock - returns true only for the first thread that succeeds
+            if (checkpointLock.compareAndSet(false, true)) {
+                try {
+                    // Only one thread will execute this block
+                    logger.info("Thread {} performing checkpoint at page {}",
+                            Thread.currentThread().getName(), currentCount);
+                    flushBuffer();
+                    saveState();
+                } finally {
+                    // Release the lock for future checkpoints
+                    checkpointLock.set(false);
+                }
+            }
+            // Other threads simply continue without waiting
         }
     }
 
-    private void processPage(String url) throws IOException {
-        // Increase timeout to 10 seconds (10000 ms)
-        Document doc = Jsoup.connect(url).timeout(GLOBAL_TIMEOUT).get();
+    private void processPage(String url) {
+        Document doc;
+        try {
+            Connection.Response response = Jsoup.connect(url)
+                    .method(Connection.Method.GET)
+                    .timeout(GLOBAL_TIMEOUT)
+                    .followRedirects(true)
+                    .execute();
+
+            int statusCode = response.statusCode();
+            if (statusCode >= 200 && statusCode < 300) {
+                // Only process successful responses (2xx status codes)
+                doc = response.parse();
+            } else {
+                logger.info("Error with status code {} at {}", statusCode, url);
+                pages404.put(url, true);
+                return;
+            }
+        } catch (HttpStatusException e) {
+            // JSoup throws this for 404 and other HTTP errors
+            logger.debug("HTTP status error {}: {} at {}", e.getStatusCode(), e.getMessage(), url);
+            pages404.put(url, true);
+            return;
+        } catch (IOException e) {
+            logger.debug("IO error while crawling {}: {}", url, e.getMessage());
+            pages404.put(url, true);
+            return;
+        }
+
         parseDocument(doc);
         logger.debug("Thread {}: Crawling URL: {}", Thread.currentThread().getName(), url);
 
@@ -257,6 +313,7 @@ public class Crawler implements Runnable {
 
     private synchronized void flushBuffer() {
         if (buffer.isEmpty()) return;
+        logger.info("Thread {}: Flushing buffer with size {}", Thread.currentThread().getName(), buffer.size());
         try {
             documentService.addAll(buffer);
         } catch (Exception e) {
@@ -272,6 +329,7 @@ public class Crawler implements Runnable {
         executorService.shutdown();
         try {
             if (!executorService.awaitTermination(5, TimeUnit.MINUTES)) {
+                while (currentPage.get() < MAX_PAGE_COUNT) ;
                 logger.warn("Forcing shutdown of crawler thread pool...");
                 executorService.shutdownNow();
             } else {
@@ -295,6 +353,9 @@ public class Crawler implements Runnable {
         // Make sure to flush any remaining documents in buffer
         flushBuffer();
 
+        // Save state before finishing
+        saveState();
+
         // Clear the URL queue once at the end
         urlQueue.clear();
 
@@ -305,10 +366,94 @@ public class Crawler implements Runnable {
         logger.info("PageCount: {}", currentPage.get());
         logger.info("URLQueue: {}", urlQueue.size());
         logger.info("VisitedURLSet: {}", visitedURLSet.size());
-        for (WebDocument webDocument : webDocuments) {
-            logger.info(String.valueOf(webDocument));
+    }
+
+    /**
+     * Saves the current state of the crawler to disk for recovery
+     */
+    public synchronized void saveState() {
+        logger.info("Saving crawler state: {} pages crawled, {} URLs in queue, pages404: {}", currentPage.get(), urlQueue.size(), pages404.size());
+        List<String> queueArray = new ArrayList<>(urlQueue);
+        // Wrap all state data in a single object
+        CrawlerState fullState = new CrawlerState(
+                currentPage.get(),
+                queueArray,
+                new HashMap<>(visitedURLSet)
+        );
+
+        try (FileOutputStream fos = new FileOutputStream(STATE_FILE);
+             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            oos.writeObject(fullState);
+            logger.info("Full crawler state saved successfully ({} URLs, {} visited)", fullState.urlQueue.size(), fullState.visitedURLs.size());
+        } catch (IOException e) {
+            logger.error("Failed to save crawler state: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Restores the crawler state from disk
+     *
+     * @return true if state was successfully restored, false otherwise
+     */
+    @SuppressWarnings("unchecked")
+    public boolean restoreState() {
+        File stateFile = new File(STATE_FILE);
+
+        if (!stateFile.exists()) {
+            logger.info("No previous state found, starting fresh crawl");
+            return false;
+        }
+
+        try (FileInputStream fis = new FileInputStream(STATE_FILE);
+             ObjectInputStream ois = new ObjectInputStream(fis)) {
+
+            CrawlerState fullState = (CrawlerState) ois.readObject();
+            currentPage.set(fullState.getCurrentPage());
+
+            urlQueue.clear();
+            urlQueue.addAll(fullState.getUrlQueue());
+
+            visitedURLSet.clear();
+            visitedURLSet.putAll(fullState.getVisitedURLs());
+
+            logger.info("Restored crawler state: {} pages, {} queued URLs, {} visited URLs",
+                    currentPage.get(), urlQueue.size(), visitedURLSet.size());
+
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Failed to restore crawler state: {}", e.getMessage());
+            return false;
         }
     }
 
 
+    /**
+     * Serializable class to store crawler state
+     */
+    private static class CrawlerState implements Serializable {
+        private static final long serialVersionUID = 1L;
+        @Setter
+        private int currentPage;
+        private List<String> urlQueue;
+        private HashMap<String, Boolean> visitedURLs;
+
+        public CrawlerState(int currentPage, List<String> urlQueue, HashMap<String, Boolean> visitedURLs) {
+            this.currentPage = currentPage;
+            this.urlQueue = urlQueue;
+            this.visitedURLs = visitedURLs;
+        }
+
+        public int getCurrentPage() {
+            return currentPage;
+        }
+
+        public List<String> getUrlQueue() {
+            return urlQueue;
+        }
+
+        public HashMap<String, Boolean> getVisitedURLs() {
+            return visitedURLs;
+        }
+    }
 }

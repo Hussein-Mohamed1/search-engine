@@ -1,8 +1,8 @@
 package cu.searchengine.Indexer;
 
 import cu.searchengine.model.Documents;
+import cu.searchengine.model.IndexDocument;
 import cu.searchengine.model.InvertedIndexEntry;
-import cu.searchengine.model.RankedDocument;
 import cu.searchengine.service.DocumentService;
 import cu.searchengine.service.InvertedIndexService;
 import cu.searchengine.utils.Tokenizer;
@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -83,16 +82,13 @@ public class InvertedIndex {
             String word = entry.getKey();
             PostingData data = entry.getValue();
 
-            List<RankedDocument> postingEntries = new ArrayList<>();
+            List<IndexDocument> postingEntries = new ArrayList<>();
             for (Map.Entry<Integer, Posting> p : data.getPostings().entrySet()) {
                 Posting posting = p.getValue();
-                postingEntries.add(new RankedDocument(
+                postingEntries.add(new IndexDocument(
                         p.getKey(),
                         posting.getUrl(),
                         posting.getTitle(),
-                        0,
-                        0,
-                        0,
                         posting.getTf()));
             }
 
@@ -140,15 +136,15 @@ public class InvertedIndex {
                     if (existing == null) {
                         toInsert.add(entry);
                     } else {
-                        List<RankedDocument> existingPostings = existing.getPostings();
-                        List<RankedDocument> newPostings = entry.getPostings();
+                        List<IndexDocument> existingPostings = existing.getPostings();
+                        List<IndexDocument> newPostings = entry.getPostings();
 
                         var existingDocIds = existingPostings.stream()
-                                .map(RankedDocument::getDocId)
+                                .map(IndexDocument::getDocId)
                                 .collect(java.util.stream.Collectors.toSet());
 
                         int added = 0;
-                        for (RankedDocument newPost : newPostings) {
+                        for (IndexDocument newPost : newPostings) {
                             if (!existingDocIds.contains(newPost.getDocId())) {
                                 existingPostings.add(newPost);
                                 added++;

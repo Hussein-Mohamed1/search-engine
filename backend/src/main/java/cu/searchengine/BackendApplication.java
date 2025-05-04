@@ -45,7 +45,7 @@ public class BackendApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        runCrawler();
+//        runCrawler();
     }
 
     //     Run the crawler continuously (every 10 seconds, adjust as needed)

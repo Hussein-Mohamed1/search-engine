@@ -17,18 +17,35 @@ public class RankedDocument {
     private double PopularityScore;
     private double FinalScore;
     private Integer tf;
+    private String snippet; // Add this field for the result snippet
+
     public RankedDocument() {
         // Required by Spring Data
     }
-    public RankedDocument(Integer docId, String url, String docTitle, double relevanceScore, double popularityScore, double finalScore,Integer tf) {
+
+    public RankedDocument(Integer docId, String url, String docTitle, double relevanceScore, double popularityScore, double finalScore, Integer tf) {
         this.docId = docId;
         this.url = url;
         this.docTitle = docTitle;
         RelevanceScore = relevanceScore;
         PopularityScore = popularityScore;
         FinalScore = finalScore;
-        this.tf=tf;
+        this.tf = tf;
+        this.snippet = null; // default
     }
+
+    // Add a constructor with snippet
+    public RankedDocument(Integer docId, String url, String docTitle, double relevanceScore, double popularityScore, double finalScore, Integer tf, String snippet) {
+        this.docId = docId;
+        this.url = url;
+        this.docTitle = docTitle;
+        RelevanceScore = relevanceScore;
+        PopularityScore = popularityScore;
+        FinalScore = finalScore;
+        this.tf = tf;
+        this.snippet = snippet;
+    }
+
     public RankedDocument(String url, String docTitle, double relevanceScore, double popularityScore, double finalScore) {
         this.url = url;
         this.docTitle = docTitle;

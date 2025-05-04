@@ -6,72 +6,55 @@ import cu.searchengine.ranker.PopularityScorer;
 import cu.searchengine.ranker.RelevanceScorer;
 import cu.searchengine.service.DocumentService;
 import cu.searchengine.service.InvertedIndexService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class RankerController {
-    private RelevanceScorer relevanceScorer;
-    private PopularityScorer popularityScorer;
-    private double relevanceWeight = 0.7;
-    private double popularityWeight = 0.3;
-    private InvertedIndexService invertedIndexService;
+    private static final Logger logger = LoggerFactory.getLogger(RankerController.class);
+    private final RelevanceScorer relevanceScorer;
+    private final PopularityScorer popularityScorer;
+    private final double relevanceWeight = 0.7;
+    private final double popularityWeight = 0.3;
+    private final InvertedIndexService invertedIndexService;
+    private final int numThreads;
 
     public RankerController(int totalDocuments, DocumentService documentServices, InvertedIndexService invertedIndexService) {
         this.relevanceScorer = new RelevanceScorer(totalDocuments);
         this.popularityScorer = new PopularityScorer(documentServices);
         this.invertedIndexService = invertedIndexService;
+        this.numThreads = 128;
     }
 
     public List<RankedDocument> rankDocuments(String[] wordsArray) {
-        Map<Integer, RankedDocument> docScoresMap = new ConcurrentHashMap<>();
-
-        // Create maps for faster lookup of InvertedIndexEntries and DFs by word
-        Map<String, List<RankedDocument>> wordToDocsMap = new HashMap<>();
-        Map<String, Integer> wordToDfMap = new HashMap<>();
-
-        // Fetch only the needed inverted index entries for the query words
-        Map<String, InvertedIndexEntry> queryWordEntries = invertedIndexService.getEntriesForWords(wordsArray);
-
-        // Prepare data structures using only the retrieved entries
-        for (String word : wordsArray) {
-            InvertedIndexEntry entry = queryWordEntries.get(word);
-            if (entry != null && entry.getRankedPostings() != null && !entry.getRankedPostings().isEmpty()) {
-                wordToDocsMap.put(word, entry.getRankedPostings());
-                wordToDfMap.put(word, entry.getDf());
-            }
+        // Fetch word entries (cached by InvertedIndexService)
+        Map<String, InvertedIndexEntry> wordToEntryMap = invertedIndexService.getEntriesForWords(wordsArray);
+        if (wordToEntryMap.isEmpty()) {
+            return List.of(); // Return empty list immediately
         }
 
-        // Process relevance scores in parallel
-        relevanceScorer.computeRelevanceScoresParallel(docScoresMap, wordsArray, wordToDocsMap, wordToDfMap);
+        // Step 1: Calculate relevance scores (already parallelized internally)
+        Map<Integer, RankedDocument> docScoresMap = relevanceScorer.calculateRelevanceScores(wordsArray, wordToEntryMap);
 
-        // Normalize relevance scores in parallel
-        relevanceScorer.normalizeScoresParallel(docScoresMap);
-
-        // Calculate popularity scores
+        // Step 2: Calculate popularity scores (if needed)
         popularityScorer.calculatePopularityScores(docScoresMap);
 
-        // Calculate final scores with parallel stream for better performance
-        docScoresMap.values().parallelStream().forEach(doc -> {
-            double finalScore = (relevanceWeight * doc.getRelevanceScore()) +
-                    (popularityWeight * doc.getPopularityScore());
+        // Step 3: Calculate final scores and sort
+        docScoresMap.forEach((docId, doc) -> {
+            double finalScore = (relevanceWeight * doc.getRelevanceScore()) + (popularityWeight * doc.getPopularityScore());
             doc.setFinalScore(finalScore);
         });
 
-        // Convert to List and sort - use ArrayList for better performance
-        List<RankedDocument> result = docScoresMap.values().stream()
+        return docScoresMap.values().stream()
                 .sorted(Comparator.comparingDouble(RankedDocument::getFinalScore).reversed())
                 .collect(Collectors.toList());
-
-        return result;
-    }
-
-    public void shutdown() {
-        relevanceScorer.shutdown();
-        popularityScorer.shutdown(); // Assuming this method exists
     }
 }

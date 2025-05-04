@@ -1,206 +1,102 @@
 package cu.searchengine.ranker;
 
+import cu.searchengine.model.IndexDocument;
+import cu.searchengine.model.InvertedIndexEntry;
 import cu.searchengine.model.RankedDocument;
 
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.stream.Collectors;
 
 public class RelevanceScorer {
     private final int totalDocuments;
-    private final int numThreads;
-    private final ExecutorService executorService;
 
     public RelevanceScorer(int totalDocuments) {
         this.totalDocuments = totalDocuments;
-        this.numThreads = Runtime.getRuntime().availableProcessors();
-        this.executorService = Executors.newFixedThreadPool(numThreads);
     }
 
-    public RelevanceScorer(int totalDocuments, int numThreads) {
-        this.totalDocuments = totalDocuments;
-        this.numThreads = numThreads > 0 ? numThreads : Runtime.getRuntime().availableProcessors();
-        this.executorService = Executors.newFixedThreadPool(this.numThreads);
+    public double computeTF(int termFrequency) {
+        return (double) termFrequency; // Keeping it double for possible future normalization
     }
 
-    public double computeTFIDF(int tf, int df) {
-        if (df == 0) return 0;
-        double idf = Math.log10((double) totalDocuments / df);
-        return tf * idf;
+    public double computeIDF(int documentFrequency) {
+        if (documentFrequency == 0) {
+            return 0; // Avoid division by zero
+        }
+        return Math.log(totalDocuments / (double) documentFrequency);
     }
 
-    public void computeRelevanceScoresParallel(Map<Integer, RankedDocument> docScoresMap,
-                                               String[] wordsArray,
-                                               Map<String, List<RankedDocument>> wordToDocsMap,
-                                               Map<String, Integer> wordToDfMap) {
-        // Create partitions of words to process
-        List<List<String>> wordPartitions = partitionArray(wordsArray, numThreads);
-        CountDownLatch wordsLatch = new CountDownLatch(wordPartitions.size());
+    public Map<Integer, RankedDocument> calculateRelevanceScores(String[] wordsArray,
+                                                                 Map<String, InvertedIndexEntry> wordToEntryMap) {
+        // Use ConcurrentHashMap to collect postings by docId
+        Map<Integer, List<PostingInfo>> docToPostings = new ConcurrentHashMap<>();
+        // Use DoubleAdder for thread-safe sum accumulation
+        DoubleAdder scoreSum = new DoubleAdder();
 
-        // Process each partition in a separate thread
-        for (List<String> wordPartition : wordPartitions) {
-            executorService.submit(() -> {
-                try {
-                    // Process all words in this partition
-                    for (String word : wordPartition) {
-                        List<RankedDocument> docsList = wordToDocsMap.get(word);
-                        Integer df = wordToDfMap.get(word);
-
-                        if (docsList == null || df == null || docsList.isEmpty()) {
-                            continue;
-                        }
-
-                        // Calculate scores for each document for this word
-                        Map<Integer, Double> partialScores = new HashMap<>();
-
-                        for (RankedDocument doc : docsList) {
-                            Integer docId = doc.getDocId();
-                            int tf = doc.getTf();
-
-                            double relevanceScore = computeTFIDF(tf, df);
-                            partialScores.put(docId, relevanceScore);
-                        }
-
-                        // Update the shared map with synchronization
-                        synchronized (docScoresMap) {
-                            for (Map.Entry<Integer, Double> entry : partialScores.entrySet()) {
-                                Integer docId = entry.getKey();
-                                Double score = entry.getValue();
-
-                                docScoresMap.compute(docId, (key, rankedDoc) -> {
-                                    if (rankedDoc == null) {
-                                        RankedDocument doc = docsList.stream()
-                                                .filter(d -> d.getDocId().equals(docId))
-                                                .findFirst()
-                                                .orElse(null);
-
-                                        if (doc != null) {
-                                            return new RankedDocument(docId, doc.getUrl(), doc.getDocTitle(),
-                                                    score, 0, 0, doc.getTf());
-                                        }
-                                        return null;
-                                    } else {
-                                        rankedDoc.setRelevanceScore(rankedDoc.getRelevanceScore() + score);
-                                        return rankedDoc;
-                                    }
-                                });
-                            }
-                        }
+        // Step 1: Aggregate postings by docId in parallel
+        Arrays.stream(wordsArray)
+                .parallel()
+                .filter(wordToEntryMap::containsKey)
+                .forEach(word -> {
+                    InvertedIndexEntry entry = wordToEntryMap.get(word);
+                    if (entry == null || entry.getRankedPostings() == null) {
+                        return;
                     }
-                } finally {
-                    wordsLatch.countDown();
+
+                    int df = entry.getDf();
+                    double idf = computeIDF(df); // Precompute IDF for this word
+
+                    for (IndexDocument doc : entry.getRankedPostings()) {
+                        Integer docId = doc.getDocId();
+                        docToPostings.computeIfAbsent(docId, k -> Collections.synchronizedList(new ArrayList<>()))
+                                .add(new PostingInfo(doc.getTf(), idf, doc.getUrl(), doc.getDocTitle()));
+                    }
+                });
+
+        // Step 2: Compute relevance scores for each docId
+        Map<Integer, RankedDocument> docScoresMap = new ConcurrentHashMap<>();
+        docToPostings.forEach((docId, postings) -> {
+            double relevanceScore = 0;
+            String url = null;
+            String title = null;
+
+            // Sum TF-IDF contributions from all postings for this docId
+            for (PostingInfo posting : postings) {
+                relevanceScore += posting.tf * posting.idf;
+                if (url == null) {
+                    url = posting.url; // Use the first non-null URL
+                    title = posting.title; // Use the first non-null title
                 }
-            });
-        }
-
-        try {
-            wordsLatch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while computing relevance scores", e);
-        }
-    }
-
-    public void normalizeScoresParallel(Map<Integer, RankedDocument> docScoresMap) {
-        // Calculate sum in parallel
-        AtomicReference<Double> sumRef = new AtomicReference<>(0.0);
-        List<Map.Entry<Integer, RankedDocument>> entries = new ArrayList<>(docScoresMap.entrySet());
-
-        // Partition the entries
-        List<List<Map.Entry<Integer, RankedDocument>>> partitions = partitionEntries(entries, numThreads);
-        CountDownLatch sumLatch = new CountDownLatch(partitions.size());
-
-        for (List<Map.Entry<Integer, RankedDocument>> partition : partitions) {
-            executorService.submit(() -> {
-                try {
-                    double partialSum = 0;
-                    for (Map.Entry<Integer, RankedDocument> entry : partition) {
-                        partialSum += entry.getValue().getRelevanceScore();
-                    }
-
-                    // Add to the total sum atomically
-                    synchronized (sumRef) {
-                        sumRef.set(sumRef.get() + partialSum);
-                    }
-                } finally {
-                    sumLatch.countDown();
-                }
-            });
-        }
-
-        try {
-            sumLatch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while calculating sum for normalization", e);
-        }
-
-        final double sum = sumRef.get();
-        if (sum <= 0) {
-            return; // Skip normalization if sum is zero
-        }
-
-        // Normalize scores in parallel
-        CountDownLatch normalizeLatch = new CountDownLatch(partitions.size());
-
-        for (List<Map.Entry<Integer, RankedDocument>> partition : partitions) {
-            executorService.submit(() -> {
-                try {
-                    for (Map.Entry<Integer, RankedDocument> entry : partition) {
-                        RankedDocument doc = entry.getValue();
-                        doc.setRelevanceScore(doc.getRelevanceScore() / sum);
-                    }
-                } finally {
-                    normalizeLatch.countDown();
-                }
-            });
-        }
-
-        try {
-            normalizeLatch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while normalizing scores", e);
-        }
-    }
-
-    private <T> List<List<T>> partitionEntries(List<T> entries, int numPartitions) {
-        List<List<T>> partitions = new ArrayList<>(numPartitions);
-
-        for (int i = 0; i < numPartitions; i++) {
-            partitions.add(new ArrayList<>());
-        }
-
-        for (int i = 0; i < entries.size(); i++) {
-            partitions.get(i % numPartitions).add(entries.get(i));
-        }
-
-        return partitions;
-    }
-
-    private List<List<String>> partitionArray(String[] array, int numPartitions) {
-        List<List<String>> partitions = new ArrayList<>(numPartitions);
-
-        for (int i = 0; i < numPartitions; i++) {
-            partitions.add(new ArrayList<>());
-        }
-
-        for (int i = 0; i < array.length; i++) {
-            partitions.get(i % numPartitions).add(array[i]);
-        }
-
-        return partitions;
-    }
-
-    public void shutdown() {
-        executorService.shutdown();
-        try {
-            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-                executorService.shutdownNow();
             }
-        } catch (InterruptedException e) {
-            executorService.shutdownNow();
-            Thread.currentThread().interrupt();
+
+            scoreSum.add(relevanceScore);
+            docScoresMap.put(docId, new RankedDocument(docId, url, title, relevanceScore, 0, 0, postings.get(0).tf));
+        });
+
+        // Step 3: Normalize scores if sum is non-zero
+        double totalScore = scoreSum.doubleValue();
+        if (totalScore > 0) {
+            docScoresMap.forEach((docId, rankedDoc) -> {
+                rankedDoc.setRelevanceScore(rankedDoc.getRelevanceScore() / totalScore);
+            });
+        }
+
+        return docScoresMap;
+    }
+
+    // Helper class to store posting information
+    private static class PostingInfo {
+        final int tf;
+        final double idf;
+        final String url;
+        final String title;
+
+        PostingInfo(int tf, double idf, String url, String title) {
+            this.tf = tf;
+            this.idf = idf;
+            this.url = url;
+            this.title = title;
         }
     }
 }

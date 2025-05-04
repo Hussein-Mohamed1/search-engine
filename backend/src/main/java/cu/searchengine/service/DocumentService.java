@@ -5,6 +5,7 @@ import cu.searchengine.repository.DocumentsRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
 
 @Service
 public class DocumentService {
@@ -67,6 +68,11 @@ public class DocumentService {
         return incomingLinks;
     }
 
+    public void addAll(BlockingQueue<Documents> buffer) {
+
+        documentsRepository.saveAll(buffer);
+    }
+
     public void addAll(List<Documents> buffer) {
 
         documentsRepository.saveAll(buffer);
@@ -83,5 +89,9 @@ public class DocumentService {
             doc.setInvertedIndexProcessed(true);
         }
         documentsRepository.saveAll(docs);
+    }
+
+    public List<Documents> getDocumentsByIds(Set<Integer> docIds) {
+        return documentsRepository.findAllById(docIds);
     }
 }
