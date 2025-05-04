@@ -70,8 +70,8 @@ public class Crawler implements Runnable {
     public Crawler(DocumentService documentService) {
         // Set default values for other fields as needed
         this("Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.166 Safari/537.36", // userAgent
-                6000, // MAX_PAGE_COUNT
-                256, // numberOfThreads
+                6500, // MAX_PAGE_COUNT
+                50, // numberOfThreads
                 60000, // queueCapacity
                 documentService);
     }
