@@ -8,6 +8,7 @@ public class Posting {
     private Integer [] positions; // Word positions in the document
     String title;
     String url;
+    double popularity;
 
     public Posting() {
         this.tf = 0;
@@ -18,6 +19,7 @@ public class Posting {
         }
         this.title="";
         this.url="";
+        this.popularity=0;
     }
 
     public void setTitle(String title) {
@@ -50,4 +52,7 @@ public class Posting {
             positions[0]++;
         this.tf++; // Increase TF count
     }
+
+    public void setPopularity(double popularity) { this.popularity = popularity; }
+    public double getPopularity() { return popularity; }
 }
