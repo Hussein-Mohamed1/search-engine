@@ -35,62 +35,26 @@ public class RankerController {
     }
 
     public List<RankedDocument> rankDocuments(String[] wordsArray) {
-        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
-        try {
-            // Fetch word entries (cached by InvertedIndexService)
-            Map<String, InvertedIndexEntry> wordToEntryMap = invertedIndexService.getEntriesForWords(wordsArray);
-            if (wordToEntryMap.isEmpty()) {
-                return List.of(); // Return empty list immediately
-            }
-            // Use ConcurrentHashMap for thread-safe operations
-            Map<Integer, RankedDocument> docScoresMap = new ConcurrentHashMap<>();
-
-            // Parallelize relevance and popularity score calculations
-            executorService.submit(() -> {
-                Map<Integer, RankedDocument> relevanceScores = relevanceScorer.calculateRelevanceScores(wordsArray, wordToEntryMap);
-                docScoresMap.putAll(relevanceScores);
-            });
-
-            executorService.submit(() -> {
-                // Wait for relevance scores to be computed
-                while (docScoresMap.isEmpty()) {
-                    try {
-                        Thread.sleep(10); // Avoid busy-waiting
-                    } catch (InterruptedException e) {
-                        logger.error("Error waiting for relevance scores: {}", e.getMessage());
-                    }
-                }
-                popularityScorer.calculatePopularityScores(docScoresMap);
-            });
-
-            // Wait for all tasks to complete
-            executorService.shutdown();
-            try {
-                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
-                    logger.warn("Executor did not terminate in time");
-                }
-            } catch (InterruptedException e) {
-                executorService.shutdownNow();
-                logger.error("Executor interrupted: {}", e.getMessage());
-            }
-
-            // Calculate final scores (optimized loop)
-            docScoresMap.forEach((docId, doc) -> {
-                double finalScore = (relevanceWeight * doc.getRelevanceScore()) + (popularityWeight * doc.getPopularityScore());
-                doc.setFinalScore(finalScore);
-            });
-
-            // Sort and return results
-            return docScoresMap.values().stream()
-                    .sorted(Comparator.comparingDouble(RankedDocument::getFinalScore).reversed())
-                    .collect(Collectors.toList());
-
-        } finally {
-            // Ensure executor is reset for future calls
-            if (!executorService.isShutdown()) {
-                executorService.shutdownNow();
-            }
+        // Fetch word entries (cached by InvertedIndexService)
+        Map<String, InvertedIndexEntry> wordToEntryMap = invertedIndexService.getEntriesForWords(wordsArray);
+        if (wordToEntryMap.isEmpty()) {
+            return List.of(); // Return empty list immediately
         }
+
+        // Step 1: Calculate relevance scores (already parallelized internally)
+        Map<Integer, RankedDocument> docScoresMap = relevanceScorer.calculateRelevanceScores(wordsArray, wordToEntryMap);
+
+        // Step 2: Calculate popularity scores (if needed)
+        popularityScorer.calculatePopularityScores(docScoresMap);
+
+        // Step 3: Calculate final scores and sort
+        docScoresMap.forEach((docId, doc) -> {
+            double finalScore = (relevanceWeight * doc.getRelevanceScore()) + (popularityWeight * doc.getPopularityScore());
+            doc.setFinalScore(finalScore);
+        });
+
+        return docScoresMap.values().stream()
+                .sorted(Comparator.comparingDouble(RankedDocument::getFinalScore).reversed())
+                .collect(Collectors.toList());
     }
 }
