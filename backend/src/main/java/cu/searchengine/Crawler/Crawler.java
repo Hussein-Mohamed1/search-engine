@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -56,6 +57,9 @@ public class Crawler implements Runnable {
     private final BlockingQueue<Documents> buffer = new LinkedBlockingQueue<>();
     static final int GLOBAL_TIMEOUT = 10_000;
 
+    // AtomicBoolean for checkpoint coordination across threads
+    private final AtomicBoolean checkpointLock = new AtomicBoolean(false);
+
     // File name for serialization
     private static final String STATE_FILE = "crawler_state.ser";
 
@@ -67,7 +71,7 @@ public class Crawler implements Runnable {
         // Set default values for other fields as needed
         this("Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.166 Safari/537.36", // userAgent
                 6000, // MAX_PAGE_COUNT
-                512, // numberOfThreads
+                256, // numberOfThreads
                 60000, // queueCapacity
                 documentService);
     }
@@ -142,18 +146,7 @@ public class Crawler implements Runnable {
 
                 // This block ensures the crawler does not exceed the maximum allowed pages.
                 // It increments the page count, checks if it exceeds the limit, and if so, decrements and exits.
-                int currentCount = currentPage.incrementAndGet();
-                if (currentCount > MAX_PAGE_COUNT) {
-                    currentPage.decrementAndGet();
-                    return;
-                }
 
-                // Checkpoint state periodically
-                if (currentCount % CHECKPOINT_FREQUENCY == 0) {
-                    synchronized (this) {
-                        saveState();
-                    }
-                }
 
                 logger.debug("[{}] Processing page: {}", threadName, normalizedURL);
                 processPage(normalizedURL);
@@ -252,9 +245,27 @@ public class Crawler implements Runnable {
         // The correct approach - Always add current document to buffer
         buffer.add(document);
 
-        // save documents in batches of 100
-        if (buffer.size() >= 100) {
-            flushBuffer();
+        int currentCount = currentPage.incrementAndGet();
+        if (currentCount > MAX_PAGE_COUNT) {
+            currentPage.decrementAndGet();
+            return;
+        }
+
+        if (currentCount % CHECKPOINT_FREQUENCY == 0) {
+            // Try to acquire the lock - returns true only for the first thread that succeeds
+            if (checkpointLock.compareAndSet(false, true)) {
+                try {
+                    // Only one thread will execute this block
+                    logger.info("Thread {} performing checkpoint at page {}",
+                            Thread.currentThread().getName(), currentCount);
+                    flushBuffer();
+                    saveState();
+                } finally {
+                    // Release the lock for future checkpoints
+                    checkpointLock.set(false);
+                }
+            }
+            // Other threads simply continue without waiting
         }
     }
 
@@ -318,6 +329,7 @@ public class Crawler implements Runnable {
         executorService.shutdown();
         try {
             if (!executorService.awaitTermination(5, TimeUnit.MINUTES)) {
+                while (currentPage.get() < MAX_PAGE_COUNT) ;
                 logger.warn("Forcing shutdown of crawler thread pool...");
                 executorService.shutdownNow();
             } else {
