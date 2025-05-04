@@ -1,12 +1,14 @@
 package cu.searchengine.ranker;
 
+import cu.searchengine.model.Documents;
 import cu.searchengine.model.RankedDocument;
 import cu.searchengine.service.DocumentService;
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
-
+@Component
 public class PopularityScorer {
     private static final double DAMPING = 0.85;
     private static final double EPSILON = 0.0001;
@@ -21,7 +23,7 @@ public class PopularityScorer {
     public PopularityScorer(DocumentService documentService) {
         this.documentService = documentService;
         this.webGraph = documentService.getWebGraph();
-        this.numThreads = 128; 
+        this.numThreads = 128;
 
         // Initialize allPages
         this.allPages = new HashSet<>();
@@ -51,19 +53,16 @@ public class PopularityScorer {
         }
     }
 
-    public Map<Integer, RankedDocument> calculatePopularityScores(Map<Integer, RankedDocument> documents) {
+    public void calculatePopularityScores() {
         Map<Integer, Double> pageRankScores = calculatePageRank();
-
+        int size = documentService.getNumberOfDocuments();
+        System.out.println("Number of documents: " + size);
         for (Map.Entry<Integer, Double> entry : pageRankScores.entrySet()) {
             Integer docId = entry.getKey();
             Double pageRankScore = entry.getValue();
-
-            if (documents.containsKey(docId)) {
-                documents.get(docId).setPopularityScore(pageRankScore);
-            }
+                documentService.updatePopularityScore(docId , pageRankScore);
         }
 
-        return documents;
     }
 
     private Map<Integer, Double> calculatePageRank() {

@@ -45,7 +45,7 @@ public class RankerController {
         Map<Integer, RankedDocument> docScoresMap = relevanceScorer.calculateRelevanceScores(wordsArray, wordToEntryMap);
 
         // Step 2: Calculate popularity scores (if needed)
-        popularityScorer.calculatePopularityScores(docScoresMap);
+//        popularityScorer.calculatePopularityScores(docScoresMap);
 
         // Step 3: Calculate final scores and sort
         docScoresMap.forEach((docId, doc) -> {

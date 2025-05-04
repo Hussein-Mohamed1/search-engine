@@ -70,8 +70,8 @@ public class Crawler implements Runnable {
     public Crawler(DocumentService documentService) {
         // Set default values for other fields as needed
         this("Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.166 Safari/537.36", // userAgent
-                6000, // MAX_PAGE_COUNT
-                256, // numberOfThreads
+                1000, // MAX_PAGE_COUNT
+                50, // numberOfThreads
                 60000, // queueCapacity
                 documentService);
     }
@@ -125,7 +125,7 @@ public class Crawler implements Runnable {
         // Change the while condition to prevent possible thread starvation
         // Note: In previous condition, !urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT,
         // if crawling is over and queue is empty but currentPage.get() < MAX_PAGE_COUNT is true, this thread will get starved
-        while (!urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT) {
+        while (!urlQueue.isEmpty() && currentPage.get() < MAX_PAGE_COUNT) {
             String url = urlQueue.poll();
             if (url == null) continue;
 
@@ -329,7 +329,7 @@ public class Crawler implements Runnable {
         executorService.shutdown();
         try {
             if (!executorService.awaitTermination(5, TimeUnit.MINUTES)) {
-                while (currentPage.get() < MAX_PAGE_COUNT) ;
+
                 logger.warn("Forcing shutdown of crawler thread pool...");
                 executorService.shutdownNow();
             } else {

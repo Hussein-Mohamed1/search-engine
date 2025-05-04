@@ -25,6 +25,7 @@ public class Documents implements Comparable<Documents> {
     private List<String> subHeadings;
     private String content;
     private List<String> links;
+    private Double popularityScore = 0.0;
 
     @Getter
     @Setter
