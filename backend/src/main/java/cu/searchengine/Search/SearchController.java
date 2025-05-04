@@ -34,8 +34,7 @@ public class SearchController {
     private RankerController ranker;
 
     @Autowired
-    public SearchController(DocumentService documentService, InvertedIndexService invertedIndexService,
-                            SearchService searchService) {
+    public SearchController(DocumentService documentService, InvertedIndexService invertedIndexService, SearchService searchService) {
         this.documentService = documentService;
         this.invertedIndexService = invertedIndexService;
         this.searchService = searchService;
@@ -49,9 +48,7 @@ public class SearchController {
     }
 
     @GetMapping("/search")
-    public Map<String, Object> search(@RequestParam("q") String query,
-                                      @RequestParam(value = "page", defaultValue = "0") int page,
-                                      @RequestParam(value = "size", defaultValue = "10") int size) {
+    public Map<String, Object> search(@RequestParam("q") String query, @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "10") int size) {
         Map<String, Object> response = new HashMap<>();
 
         if (query == null || query.trim().isEmpty()) {
@@ -94,9 +91,7 @@ public class SearchController {
         List<RankedDocument> pagedResults = ranked.subList(from, to);
 
         // Batch fetch all needed documents for snippet generation
-        Set<Integer> docIds = pagedResults.stream()
-                .map(RankedDocument::getDocId)
-                .collect(Collectors.toSet());
+        Set<Integer> docIds = pagedResults.stream().map(RankedDocument::getDocId).collect(Collectors.toSet());
         Map<Integer, Documents> docsById = new HashMap<>();
         if (!docIds.isEmpty()) {
             // Batch fetch all documents by their IDs (use a batch method)
@@ -150,27 +145,38 @@ public class SearchController {
         ExecutorService executor = Executors.newFixedThreadPool(threads);
 
         try {
-            List<CompletableFuture<RankedDocument>> futures = rankedDocs.stream()
-                    .map(doc -> CompletableFuture.supplyAsync(() -> {
-                        Documents fullDoc = documentService.getDocumentById(doc.getDocId());
-                        if (fullDoc == null)
-                            return null;
+            List<CompletableFuture<RankedDocument>> futures = rankedDocs.stream().map(doc -> CompletableFuture.supplyAsync(() -> {
+                try {
+                    Documents fullDoc = documentService.getDocumentById(doc.getDocId());
+                    if (fullDoc == null) return null;
 
-                        String content = fullDoc.getContent().toLowerCase();
-                        String title = fullDoc.getTitle().toLowerCase();
+                    String content = fullDoc.getContent();
+                    String title = fullDoc.getTitle();
 
-                        boolean allMatch = phrases.stream().allMatch(phrase -> {
-                            String phraseStr = String.join(" ", phrase);
-                            return content.contains(phraseStr) || title.contains(phraseStr);
-                        });
-                        return allMatch ? doc : null;
-                    }, executor))
-                    .toList();
+                    if (content == null || title == null) return null;
 
-            List<RankedDocument> result = futures.stream()
-                    .map(CompletableFuture::join)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+                    // Convert to lowercase once for case-insensitive comparison
+                    String contentLower = content.toLowerCase();
+                    String titleLower = title.toLowerCase();
+
+                    boolean allMatch = phrases.stream().allMatch(phrase -> {
+                        String phraseStr = String.join(" ", phrase).toLowerCase();
+                        return contentLower.contains(phraseStr) || titleLower.contains(phraseStr);
+                    });
+
+                    // Log for debugging if needed
+                    if (!allMatch) {
+                        System.out.println("Document " + doc.getDocId() + " did not match all phrases");
+                    }
+
+                    return allMatch ? doc : null;
+                } catch (Exception e) {
+                    System.err.println("Error in phrase matching for doc " + doc.getDocId() + ": " + e.getMessage());
+                    return null;
+                }
+            }, executor)).toList();
+
+            List<RankedDocument> result = futures.stream().map(CompletableFuture::join).filter(Objects::nonNull).collect(Collectors.toList());
 
             return result;
         } finally {
@@ -258,12 +264,10 @@ public class SearchController {
         List<RankedDocument> rankedResults = ranker.rankDocuments(queryWords);
         List<RankedDocument> rankedResults2 = ranker.rankDocuments(queryWords2);
 
-        SearchResult result1 = SearchResult.builder().query("java Search").results(rankedResults)
-                .timestamp(System.currentTimeMillis()).build();
+        SearchResult result1 = SearchResult.builder().query("java Search").results(rankedResults).timestamp(System.currentTimeMillis()).build();
         searchService.saveSearchResult(result1);
 
-        SearchResult result2 = SearchResult.builder().query("java ranking").results(rankedResults2)
-                .timestamp(System.currentTimeMillis()).build();
+        SearchResult result2 = SearchResult.builder().query("java ranking").results(rankedResults2).timestamp(System.currentTimeMillis()).build();
         searchService.saveSearchResult(result2);
 
         List<SearchResult> res = searchService.getResultsByQuery("java Search");

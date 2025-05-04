@@ -31,7 +31,7 @@ public class RankerController {
         this.relevanceScorer = new RelevanceScorer(totalDocuments);
         this.popularityScorer = new PopularityScorer(documentServices);
         this.invertedIndexService = invertedIndexService;
-        this.numThreads = Runtime.getRuntime().availableProcessors();
+        this.numThreads = 128;
     }
 
     public List<RankedDocument> rankDocuments(String[] wordsArray) {
