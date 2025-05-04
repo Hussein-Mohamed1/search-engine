@@ -221,7 +221,7 @@ export default function Page() {
         )}
 
         {/* No results message */}
-        {noResults && (
+        {!error && noResults && (
           <div className="flex flex-col items-center justify-center py-16 px-4 max-w-xl mx-auto text-center">
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-8 backdrop-blur-sm">
               <svg
@@ -266,7 +266,7 @@ export default function Page() {
         )}
 
         {/* Search results - show even during loading if we have cached data */}
-        {data && data.results && data.results.length > 0 && (
+        {!error && data && data.results && data.results.length > 0 && (
           <div className={`transition-all duration-300 ${isLoading ? 'opacity-50 blur-sm' : 'opacity-100'}`}>
             <SearchResults data={data.results} stats={data.stats} className="mx-16" />
 

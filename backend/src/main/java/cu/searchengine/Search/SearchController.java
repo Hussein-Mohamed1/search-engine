@@ -66,23 +66,11 @@ public class SearchController {
         List<String> lemmatizedWords = queryProcessor.getLemmatizedWords();
         List<String[]> phrases = queryProcessor.getPhrases();
         phrases.forEach((w) -> System.out.println(Arrays.toString(w)));
-        CompletableFuture<List<RankedDocument>> rankedFuture = CompletableFuture.supplyAsync(() -> {
-            List<RankedDocument> ranked = ranker.rankDocuments(lemmatizedWords.toArray(new String[0]));
-            if (!phrases.isEmpty()) {
-                ranked = filterByPhraseMatch(ranked, phrases);
-            }
-            return ranked;
-        });
 
-        List<RankedDocument> ranked;
-        try {
-            ranked = rankedFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            response.put("results", Collections.emptyList());
-            response.put("pages", 0);
-            response.put("resultCount", 0);
-            response.put("elapsedMs", 0);
-            return response;
+        // Get ranked documents in parallel
+        List<RankedDocument> ranked = ranker.rankDocuments(lemmatizedWords.toArray(new String[0]));
+        if (!phrases.isEmpty()) {
+            ranked = filterByPhraseMatch(ranked, phrases);
         }
 
         int validPage = page >= 0 ? page : 0;
@@ -101,15 +89,15 @@ public class SearchController {
             }
         }
 
-        // Generate snippet for each result in the page using batch-fetched docs
+        // Generate snippets in parallel
         Set<String> queryWordsSet = new HashSet<>(lemmatizedWords);
-        for (RankedDocument doc : pagedResults) {
+        pagedResults.parallelStream().forEach(doc -> {
             Documents fullDoc = docsById.get(doc.getDocId());
             if (fullDoc != null) {
                 String snippet = generateSnippet(fullDoc.getContent(), queryWordsSet);
                 doc.setSnippet(snippet);
             }
-        }
+        });
 
         int totalPages = (int) Math.ceil((double) ranked.size() / size);
         long end = System.nanoTime();
@@ -141,47 +129,31 @@ public class SearchController {
     }
 
     private List<RankedDocument> filterByPhraseMatch(List<RankedDocument> rankedDocs, List<String[]> phrases) {
-        int threads = Math.min(16, Runtime.getRuntime().availableProcessors() * 2);
-        ExecutorService executor = Executors.newFixedThreadPool(threads);
-
-        try {
-            List<CompletableFuture<RankedDocument>> futures = rankedDocs.stream().map(doc -> CompletableFuture.supplyAsync(() -> {
+        return rankedDocs.parallelStream()
+            .filter(doc -> {
                 try {
                     Documents fullDoc = documentService.getDocumentById(doc.getDocId());
-                    if (fullDoc == null) return null;
+                    if (fullDoc == null) return false;
 
                     String content = fullDoc.getContent();
                     String title = fullDoc.getTitle();
 
-                    if (content == null || title == null) return null;
+                    if (content == null || title == null) return false;
 
                     // Convert to lowercase once for case-insensitive comparison
                     String contentLower = content.toLowerCase();
                     String titleLower = title.toLowerCase();
 
-                    boolean allMatch = phrases.stream().allMatch(phrase -> {
+                    return phrases.stream().allMatch(phrase -> {
                         String phraseStr = String.join(" ", phrase).toLowerCase();
                         return contentLower.contains(phraseStr) || titleLower.contains(phraseStr);
                     });
-
-                    // Log for debugging if needed
-                    if (!allMatch) {
-                        System.out.println("Document " + doc.getDocId() + " did not match all phrases");
-                    }
-
-                    return allMatch ? doc : null;
                 } catch (Exception e) {
                     System.err.println("Error in phrase matching for doc " + doc.getDocId() + ": " + e.getMessage());
-                    return null;
+                    return false;
                 }
-            }, executor)).toList();
-
-            List<RankedDocument> result = futures.stream().map(CompletableFuture::join).filter(Objects::nonNull).collect(Collectors.toList());
-
-            return result;
-        } finally {
-            executor.shutdown();
-        }
+            })
+            .collect(Collectors.toList());
     }
 
     @GetMapping("/stats")
