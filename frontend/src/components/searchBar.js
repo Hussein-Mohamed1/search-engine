@@ -24,6 +24,7 @@ export function SearchBar({ variant = "search", ...props }) {
     if (!query) return;
     const params = new URLSearchParams(searchParams);
     query ? params.set("q", query) : params.delete("q");
+    params.set("page", 1);
     push(`/search?${params.toString()}`);
     setShowSuggestions(false);
   };

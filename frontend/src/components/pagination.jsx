@@ -1,10 +1,17 @@
 import {useSearchParams} from "next/navigation";
-import {ChevronLeft, ChevronRight} from "lucide-react";
+import {ChevronLeft, ChevronRight, Loader2} from "lucide-react";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 export function Pagination({pagesNum}) {
     const searchParams = useSearchParams();
     const currentPage = parseInt(searchParams.get("page") > 0 ? searchParams.get("page") : "1", 10);
+    const [loadingPage, setLoadingPage] = useState(null);
+
+    // Reset loading state when search parameters change
+    useEffect(() => {
+        setLoadingPage(null);
+    }, [searchParams]);
 
     // Maximum number of page buttons to show
     const maxPageButtons = 7;
@@ -89,6 +96,13 @@ export function Pagination({pagesNum}) {
         return `/search?q=${searchParams.get("q")}&page=${page}`;
     };
 
+    // Handle page click with loading state
+    const handlePageClick = (page) => {
+        if (page !== currentPage) {
+            setLoadingPage(page);
+        }
+    };
+
     return (
         <div className="flex items-center justify-center space-x-1 py-4">
             {/* Previous Page Button */}
@@ -100,8 +114,13 @@ export function Pagination({pagesNum}) {
                         : "text-gray-300 cursor-not-allowed"
                 }`}
                 aria-disabled={currentPage <= 1}
+                onClick={() => currentPage > 1 && handlePageClick(currentPage - 1)}
             >
-                <ChevronLeft className="h-4 w-4" />
+                {loadingPage === currentPage - 1 ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    <ChevronLeft className="h-4 w-4" />
+                )}
                 <span className="hidden sm:inline ml-1">Previous</span>
             </Link>
 
@@ -111,8 +130,8 @@ export function Pagination({pagesNum}) {
                     if (page === "ellipsis-left" || page === "ellipsis-right") {
                         return (
                             <span key={page} className="px-3 py-2 text-gray-500">
-                &hellip;
-              </span>
+                                &hellip;
+                            </span>
                         );
                     }
 
@@ -120,14 +139,19 @@ export function Pagination({pagesNum}) {
                         <Link
                             key={page}
                             href={createPageUrl(page)}
-                            className={`px-3 py-2 rounded-md ${
+                            className={`px-3 py-2 rounded-md flex items-center justify-center min-w-[2.5rem] ${
                                 currentPage === page
                                     ? "bg-blue-600 text-white font-medium"
                                     : "text-blue-600 hover:bg-blue-100 transition-colors"
                             }`}
                             aria-current={currentPage === page ? "page" : undefined}
+                            onClick={() => handlePageClick(page)}
                         >
-                            {page}
+                            {loadingPage === page ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                page
+                            )}
                         </Link>
                     );
                 })}
@@ -135,8 +159,8 @@ export function Pagination({pagesNum}) {
 
             {/* Mobile page indicator */}
             <span className="sm:hidden text-gray-700">
-        {currentPage} / {pagesNum}
-      </span>
+                {currentPage} / {pagesNum}
+            </span>
 
             {/* Next Page Button */}
             <Link
@@ -147,9 +171,14 @@ export function Pagination({pagesNum}) {
                         : "text-gray-300 cursor-not-allowed"
                 }`}
                 aria-disabled={currentPage >= pagesNum}
+                onClick={() => currentPage < pagesNum && handlePageClick(currentPage + 1)}
             >
                 <span className="hidden sm:inline mr-1">Next</span>
-                <ChevronRight className="h-4 w-4" />
+                {loadingPage === currentPage + 1 ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    <ChevronRight className="h-4 w-4" />
+                )}
             </Link>
         </div>
     );
