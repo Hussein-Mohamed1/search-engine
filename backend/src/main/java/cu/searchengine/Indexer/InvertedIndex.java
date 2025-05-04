@@ -89,7 +89,8 @@ public class InvertedIndex {
                         p.getKey(),
                         posting.getUrl(),
                         posting.getTitle(),
-                        posting.getTf()));
+                        posting.getTf(),
+                        posting.getPopularity()));
             }
 
             indexEntries.add(new InvertedIndexEntry(word, data.getDf(), postingEntries));

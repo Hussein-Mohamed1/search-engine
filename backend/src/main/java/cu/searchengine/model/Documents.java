@@ -25,7 +25,7 @@ public class Documents implements Comparable<Documents> {
     private List<String> subHeadings;
     private String content;
     private List<String> links;
-    private Double popularityScore = 0.0;
+    private Double popularityScore;
 
     @Getter
     @Setter
@@ -47,6 +47,7 @@ public class Documents implements Comparable<Documents> {
         this.content = content;
         this.links = Links;
         this.webGraph = webGraph;
+        this.popularityScore = 0.0;
     }
 
     // Alternative constructor for auto-generating IDs
@@ -58,6 +59,7 @@ public class Documents implements Comparable<Documents> {
         this.subHeadings = subHeading;
         this.content = content;
         this.links = Links;
+        this.popularityScore = 0.0;
     }
 
     @Override

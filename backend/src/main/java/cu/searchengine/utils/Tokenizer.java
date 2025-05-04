@@ -30,7 +30,7 @@ public class Tokenizer {
         return tokens;
     }
 
-    public void tokenizeWithPriority(String text, int priority, Map<String, Posting> tokenMap, String title, String url, ConcurrentHashMap<String, Integer> wordfreq) {
+    public void tokenizeWithPriority(String text, int priority, Map<String, Posting> tokenMap, String title, String url,double popularity ,ConcurrentHashMap<String, Integer> wordfreq) {
         ArrayList<String> tokenizedWords = tokenize(text);
         for (String word : tokenizedWords) {
             if (word.isEmpty() || STOP_WORDS.contains(word) || word.length() == 1) continue;
@@ -42,6 +42,7 @@ public class Tokenizer {
             tokenMap.get(word).addPosition(priority); // Adds position & increments TF
             tokenMap.get(word).setTitle(title);
             tokenMap.get(word).setUrl(url);
+            tokenMap.get(word).setPopularity(popularity);
         }
     }
 }

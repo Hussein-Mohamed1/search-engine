@@ -46,12 +46,12 @@ public class BackendApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        runCrawler();
+//        runCrawler();
 
-        popularityScorer = new PopularityScorer(documentService);
-        logger.info("Popularity scorer started");
-        popularityScorer.calculatePopularityScores();
-        logger.info("Popularity scorer started");
+//        popularityScorer = new PopularityScorer(documentService);
+//        logger.info("Popularity scorer started");
+//        popularityScorer.calculatePopularityScores();
+//        logger.info("Popularity scorer started");
     }
 
     //     Run the crawler continuously (every 10 seconds, adjust as needed)
@@ -65,7 +65,7 @@ public class BackendApplication implements CommandLineRunner {
     }
 
     // Run the indexer periodically (every 5 minutes, adjust as needed)
-//    @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelay = 60000)
     public void runIndexer() {
         try {
             invertedIndex.implementThreading();
