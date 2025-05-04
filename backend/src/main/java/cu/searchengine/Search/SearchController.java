@@ -68,7 +68,7 @@ public class SearchController {
         QueryProcessor queryProcessor = new QueryProcessor(query, tokenizer);
         List<String> lemmatizedWords = queryProcessor.getLemmatizedWords();
         List<String[]> phrases = queryProcessor.getPhrases();
-
+        phrases.forEach((w) -> System.out.println(Arrays.toString(w)));
         CompletableFuture<List<RankedDocument>> rankedFuture = CompletableFuture.supplyAsync(() -> {
             List<RankedDocument> ranked = ranker.rankDocuments(lemmatizedWords.toArray(new String[0]));
             if (!phrases.isEmpty()) {
@@ -99,10 +99,8 @@ public class SearchController {
                 .collect(Collectors.toSet());
         Map<Integer, Documents> docsById = new HashMap<>();
         if (!docIds.isEmpty()) {
-            // Batch fetch all documents by their IDs
-            List<Documents> docs = documentService.getAllDocuments().stream()
-                    .filter(d -> docIds.contains(d.getId()))
-                    .toList();
+            // Batch fetch all documents by their IDs (use a batch method)
+            List<Documents> docs = documentService.getDocumentsByIds(docIds);
             for (Documents d : docs) {
                 docsById.put(d.getId(), d);
             }
@@ -121,10 +119,10 @@ public class SearchController {
         int totalPages = (int) Math.ceil((double) ranked.size() / size);
         long end = System.nanoTime();
 
-        response.put("results", pagedResults);
+        response.put("elapsedMs", (end - start) / 1_000_000.0);
         response.put("pages", totalPages);
         response.put("resultCount", ranked.size());
-        response.put("elapsedMs", (end - start) / 1_000_000.0);
+        response.put("results", pagedResults);
         return response;
     }
 

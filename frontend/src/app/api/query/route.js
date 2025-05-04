@@ -19,7 +19,11 @@ export async function GET(request) {
     return NextResponse.json(
       {
         results: data.results ?? [],
-        pages: data.pages ?? 0,
+        stats: {
+          pages: data.pages ?? 0,
+          resultCount: data.resultCount ?? 0,
+          elapsedMs: data.elapsedMs ?? 0.
+        }
       },
       {}
     );

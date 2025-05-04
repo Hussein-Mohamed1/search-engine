@@ -11,7 +11,7 @@ import { Pagination } from "@/components/pagination";
 // Enhanced fetcher with error handling
 const fetcher = async (url) => {
   const res = await fetch(url);
-  
+
   // If the response is not ok, throw an error
   if (!res.ok) {
     const error = new Error('An error occurred while fetching the data.');
@@ -19,7 +19,7 @@ const fetcher = async (url) => {
     error.status = res.status;
     throw error;
   }
-  
+
   return res.json();
 };
 
@@ -34,11 +34,11 @@ export default function Page() {
   if (!searchParams.has("q") || searchParams.get("q").trim() === "") {
     redirect("/");
   }
-  
+
   const query = searchParams.get("q");
   const page = searchParams.get("page") || "1";
   const [scrolled, setScrolled] = useState(false);
-  
+
   // Use the cache key for better cache management
   const { data, error, isLoading, mutate } = useSWR(
     `/api/query?${searchParams.toString()}`,
@@ -51,23 +51,11 @@ export default function Page() {
       refreshWhenHidden: false,
       dedupingInterval: 5000,
       keepPreviousData: true,
-      
+
       // Set a longer stale time - data remains fresh for 5 minutes
       focusThrottleInterval: 300000,
-      
-      // Custom compare function to determine if the data has changed
-      compare: (a, b) => {
-        // Simple deep comparison for search results
-        if (!a || !b) return false;
-        if (a.query !== b.query) return false;
-        if (a.pages !== b.pages) return false;
-        if (!a.results || !b.results) return false;
-        if (a.results.length !== b.results.length) return false;
-        
-        // Further comparison could be implemented based on your data structure
-        return true;
-      },
-      
+
+
       // Callback when data is successfully fetched
       onSuccess: (data) => {
         // Store successful queries in localStorage for offline use
@@ -75,13 +63,13 @@ export default function Page() {
           const cacheKey = createCacheKey(query, page);
           const cachedQueriesJson = localStorage.getItem('cachedSearchQueries') || '{}';
           const cachedQueries = JSON.parse(cachedQueriesJson);
-          
+
           // Store this result with timestamp
           cachedQueries[cacheKey] = {
             data,
             timestamp: Date.now()
           };
-          
+
           // Limit cache size (optional)
           const cacheEntries = Object.entries(cachedQueries);
           if (cacheEntries.length > 50) { // Store max 50 queries
@@ -106,11 +94,11 @@ export default function Page() {
         const cacheKey = createCacheKey(query, page);
         const cachedQueriesJson = localStorage.getItem('cachedSearchQueries') || '{}';
         const cachedQueries = JSON.parse(cachedQueriesJson);
-        
+
         if (cachedQueries[cacheKey]) {
           const cachedData = cachedQueries[cacheKey].data;
           const cacheAge = Date.now() - cachedQueries[cacheKey].timestamp;
-          
+
           // Use cache if it's less than 1 hour old
           if (cacheAge < 3600000) {
             // Use cached data while waiting for fresh data
@@ -142,9 +130,9 @@ export default function Page() {
   };
 
   // Check for no results - make sure this is defined before using it
-  const noResults = !isLoading && 
-                   !error && 
-                   (!data || !data.results || data.results.length === 0);
+  const noResults = !isLoading &&
+    !error &&
+    (!data || !data.results || data.results.length === 0);
 
   return (
     <div className="flex flex-col space-y-8 my-22 md:my-8 min-h-screen">
@@ -152,11 +140,10 @@ export default function Page() {
       <div
         onMouseEnter={() => setScrolled(false)}
         onMouseLeave={() => setScrolled(window.scrollY > 1 ? true : false)}
-        className={`fixed flex flex-row items-center justify-center mx-auto inset-x-0 w-fit px-8 z-[99999] transition-all duration-300 rounded-2xl backdrop-blur-lg bg-white/10 ${
-          scrolled
-            ? "py-3 shadow-md top-1 -translate-y-8 md:-translate-y-14 scale-85"
-            : "py-4 top-1"
-        }`}
+        className={`fixed flex flex-row items-center justify-center mx-auto inset-x-0 w-fit px-8 z-[99999] transition-all duration-300 rounded-2xl backdrop-blur-lg bg-white/10 ${scrolled
+          ? "py-3 shadow-md top-1 -translate-y-8 md:-translate-y-14 scale-85"
+          : "py-4 top-1"
+          }`}
       >
         <Link href="/">
           <div className="tracking-widest text-2xl font-extrabold mr-4">
@@ -279,12 +266,12 @@ export default function Page() {
               </div>
             </div>
           )}
-          
-          <SearchResults data={data.results} className="mx-16" />
-          
+
+          <SearchResults data={data.results} stats={data.stats} className="mx-16" />
+
           {/* Pagination Section */}
           <div className="flex mx-auto">
-            <Pagination pagesNum={data.pages} />
+            <Pagination pagesNum={data.stats.pages} />
           </div>
         </>
       )}

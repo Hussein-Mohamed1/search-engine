@@ -72,11 +72,11 @@ public class DocumentService {
 
         documentsRepository.saveAll(buffer);
     }
+
     public void addAll(List<Documents> buffer) {
 
         documentsRepository.saveAll(buffer);
     }
-
 
 
     public List<Documents> getDocumentsToIndex() {
@@ -89,5 +89,9 @@ public class DocumentService {
             doc.setInvertedIndexProcessed(true);
         }
         documentsRepository.saveAll(docs);
+    }
+
+    public List<Documents> getDocumentsByIds(Set<Integer> docIds) {
+        return documentsRepository.findAllById(docIds);
     }
 }

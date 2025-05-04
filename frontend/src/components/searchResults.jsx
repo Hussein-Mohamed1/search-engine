@@ -1,11 +1,11 @@
-import {ChevronRight} from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Image from "next/image";
-import {twMerge} from "tailwind-merge";
+import { twMerge } from "tailwind-merge";
 
 // Helper to get favicon URL from a website URL
 const getFaviconUrl = (siteUrl) => {
     try {
-        const {origin} = new URL(siteUrl);
+        const { origin } = new URL(siteUrl);
         return `${origin}/favicon.ico`;
     } catch {
         return "/vercel.svg";
@@ -26,7 +26,7 @@ function highlightSnippet(snippet, query) {
     return snippet.replace(regex, "<b>$1</b>");
 }
 
-export default function SearchResults({data, ...props}) {
+export default function SearchResults({ data, stats, ...props }) {
     // Format URL as breadcrumb pieces
     const formatBreadcrumbParts = (url) => {
         try {
@@ -48,16 +48,16 @@ export default function SearchResults({data, ...props}) {
     // Get query from URL for highlighting
     const query = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("q") || "" : "";
 
-    return (<div className={twMerge("flex flex-col gap-1", props.className)}>
+    return (<div className={twMerge("flex flex-col gap-3", props.className)}>
         {/* Search statistics */}
-        {props.stats && (<div className="text-sm text-gray-400 mb-2">
-            {props.stats.resultCount * (props.stats.pages || 1)} results
-            {typeof props.stats.elapsedMs === "number" && ` (${props.stats.elapsedMs.toFixed(2)} ms)`}
+        {stats && (<div className="text-sm text-gray-400 mb-1">
+            {stats.resultCount * (stats.pages || 1)} results
+            {typeof stats.elapsedMs === "number" && ` (${stats.elapsedMs.toFixed(2)} ms)`}
         </div>)}
         {data.map((result, index) => (<div key={index} className="flex flex-col">
             {/* URL and favicon */}
             <div className="flex items-center text-sm text-gray-400 mb-1">
-                <Image
+                <img
                     src={getFaviconUrl(result.url)}
                     alt="favicon"
                     width={16}
@@ -65,9 +65,9 @@ export default function SearchResults({data, ...props}) {
                     className="mr-2"
                 />
                 {formatBreadcrumbParts(result.url).map((part, i) => (<span key={i} className="flex items-center">
-                {i > 0 && <ChevronRight className="w-4 h-4 mx-1" />}
+                    {i > 0 && <ChevronRight className="w-4 h-4 mx-1" />}
                     {part}
-              </span>))}
+                </span>))}
             </div>
             {/* Title */}
             <a
@@ -79,7 +79,7 @@ export default function SearchResults({data, ...props}) {
 
             {/* Description/snippet with query words in bold */}
             {result.snippet && (<div
-                className="text-md text-white leading-snug max-w-[60vw] mt-1"
+                className="text-md text-white leading-snug max-w-[60vw]"
                 dangerouslySetInnerHTML={{
                     __html: highlightSnippet(result.snippet, query),
                 }}

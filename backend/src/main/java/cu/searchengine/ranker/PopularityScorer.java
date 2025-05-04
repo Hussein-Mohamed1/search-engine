@@ -21,7 +21,7 @@ public class PopularityScorer {
     public PopularityScorer(DocumentService documentService) {
         this.documentService = documentService;
         this.webGraph = documentService.getWebGraph();
-        this.numThreads = Runtime.getRuntime().availableProcessors(); // Use available CPU cores
+        this.numThreads = 128; 
 
         // Initialize allPages
         this.allPages = new HashSet<>();
