@@ -59,6 +59,15 @@ public class SearchController {
             return response;
         }
 
+        // Save the search query for suggestions asynchronously
+        CompletableFuture.runAsync(() -> {
+            try {
+                searchService.saveSearchQuery(query);
+            } catch (Exception e) {
+                System.err.println("Error saving search query: " + e.getMessage());
+            }
+        });
+
         long start = System.nanoTime();
 
         // Process the query to extract phrases and individual words
@@ -274,6 +283,14 @@ public class SearchController {
         Map<String, Object> response = new HashMap<>();
         response.put("savedResults", res);
 
+        return response;
+    }
+
+    @GetMapping("/suggestions")
+    public Map<String, Object> getSuggestions(@RequestParam(value = "q", required = false) String query) {
+        Map<String, Object> response = new HashMap<>();
+        List<String> suggestions = searchService.getSuggestions(query);
+        response.put("suggestions", suggestions);
         return response;
     }
 
