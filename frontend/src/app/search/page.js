@@ -177,7 +177,7 @@ export default function Page() {
         )}
 
         {/* Error message */}
-        {error && (
+        {!isLoading && error && (
           <div className="flex flex-col items-center justify-center py-16 px-4 max-w-xl mx-auto text-center">
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-8 backdrop-blur-sm">
               <svg

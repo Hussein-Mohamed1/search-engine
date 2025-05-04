@@ -51,7 +51,7 @@ export default function SearchResults({ data, stats, ...props }) {
     return (<div className={twMerge("flex flex-col gap-3", props.className)}>
         {/* Search statistics */}
         {stats && (<div className="text-sm text-gray-400 mb-1">
-            {stats.resultCount * (stats.pages || 1)} results
+            {stats.resultCount} results
             {typeof stats.elapsedMs === "number" && ` (${stats.elapsedMs.toFixed(2)} ms)`}
         </div>)}
         {data.map((result, index) => (<div key={index} className="flex flex-col">

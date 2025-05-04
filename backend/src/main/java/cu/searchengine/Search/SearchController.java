@@ -67,16 +67,47 @@ public class SearchController {
         List<String[]> phrases = queryProcessor.getPhrases();
         phrases.forEach((w) -> System.out.println(Arrays.toString(w)));
 
-        // Get ranked documents in parallel
+        // Get ranked documents
         List<RankedDocument> ranked = ranker.rankDocuments(lemmatizedWords.toArray(new String[0]));
+        
+        // Calculate the range of documents we need to process
+        int validPage = Math.max(0, page);
+        int requiredMatches = (validPage + 1) * size; // For page 2, we need 30 matches
+        
+        // Only process the documents we need for this page
+        List<RankedDocument> pagedResults;
         if (!phrases.isEmpty()) {
-            ranked = filterByPhraseMatch(ranked, phrases);
+            // Process documents in chunks until we find enough matches for the current page
+            List<RankedDocument> filteredResults = new ArrayList<>();
+            int currentIndex = 0;
+            int chunkSize = 50; // Process 50 documents at a time
+            
+            while (filteredResults.size() < requiredMatches && currentIndex < ranked.size()) {
+                int endIndex = Math.min(currentIndex + chunkSize, ranked.size());
+                List<RankedDocument> chunk = ranked.subList(currentIndex, endIndex);
+                List<RankedDocument> matchedChunk = filterByPhraseMatch(chunk, phrases);
+                filteredResults.addAll(matchedChunk);
+                currentIndex = endIndex;
+            }
+            
+            // Get the correct page of results
+            int from = validPage * size;
+            int to = Math.min(from + size, filteredResults.size());
+            pagedResults = filteredResults.subList(from, to);
+            
+            // Update response with filtered results count
+            response.put("resultCount", filteredResults.size());
+            response.put("pages", (int) Math.ceil((double) filteredResults.size() / size));
+        } else {
+            // For non-phrase searches, just get the page directly
+            int from = validPage * size;
+            int to = Math.min(from + size, ranked.size());
+            pagedResults = ranked.subList(from, to);
+            
+            // Update response with total ranked count
+            response.put("resultCount", ranked.size());
+            response.put("pages", (int) Math.ceil((double) ranked.size() / size));
         }
-
-        int validPage = page >= 0 ? page : 0;
-        int from = Math.min(validPage * size, ranked.size());
-        int to = Math.min(from + size, ranked.size());
-        List<RankedDocument> pagedResults = ranked.subList(from, to);
 
         // Batch fetch all needed documents for snippet generation
         Set<Integer> docIds = pagedResults.stream().map(RankedDocument::getDocId).collect(Collectors.toSet());
@@ -99,12 +130,8 @@ public class SearchController {
             }
         });
 
-        int totalPages = (int) Math.ceil((double) ranked.size() / size);
         long end = System.nanoTime();
-
         response.put("elapsedMs", (end - start) / 1_000_000.0);
-        response.put("pages", totalPages);
-        response.put("resultCount", ranked.size());
         response.put("results", pagedResults);
         return response;
     }
