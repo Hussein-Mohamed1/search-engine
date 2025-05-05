@@ -40,8 +40,6 @@ public class InvertedIndex {
             return;
         }
 
-        // Mark as indexed before processing to avoid race conditions
-        documentService.markDocumentsAsIndexed(currentDocs);
 
         int numThreads = 50;
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
@@ -59,7 +57,7 @@ public class InvertedIndex {
 
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(30, TimeUnit.MINUTES)) {
+            if (!executor.awaitTermination(5, TimeUnit.MINUTES)) {
                 logger.error("Thread pool did not terminate within timeout. Forcing shutdown...");
                 executor.shutdownNow();
             }
@@ -68,6 +66,10 @@ public class InvertedIndex {
             logger.error("Thread pool interrupted during awaitTermination", e);
             executor.shutdownNow();
         }
+        
+        // Mark as indexed before processing to avoid race conditions
+        documentService.markDocumentsAsIndexed(currentDocs);
+
         logger.info("All threads have finished execution!");
         logger.info("Indexing Complete! Final Index Size: {}", globalIndex.size());
         logger.info("Indexing took {} ms", System.currentTimeMillis() - startTime);
@@ -89,7 +91,8 @@ public class InvertedIndex {
                         p.getKey(),
                         posting.getUrl(),
                         posting.getTitle(),
-                        posting.getTf()));
+                        posting.getTf(),
+                        posting.getPopularity()));
             }
 
             indexEntries.add(new InvertedIndexEntry(word, data.getDf(), postingEntries));

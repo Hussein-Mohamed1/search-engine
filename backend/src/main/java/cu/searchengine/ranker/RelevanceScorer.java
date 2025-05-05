@@ -50,7 +50,7 @@ public class RelevanceScorer {
                     for (IndexDocument doc : entry.getRankedPostings()) {
                         Integer docId = doc.getDocId();
                         docToPostings.computeIfAbsent(docId, k -> Collections.synchronizedList(new ArrayList<>()))
-                                .add(new PostingInfo(doc.getTf(), idf, doc.getUrl(), doc.getDocTitle()));
+                                .add(new PostingInfo(doc.getTf(), idf, doc.getUrl(), doc.getDocTitle() , doc.getPopularityScore()));
                     }
                 });
 
@@ -60,6 +60,7 @@ public class RelevanceScorer {
             double relevanceScore = 0;
             String url = null;
             String title = null;
+            double popularityScore = 0;
 
             // Sum TF-IDF contributions from all postings for this docId
             for (PostingInfo posting : postings) {
@@ -67,11 +68,12 @@ public class RelevanceScorer {
                 if (url == null) {
                     url = posting.url; // Use the first non-null URL
                     title = posting.title; // Use the first non-null title
+                    popularityScore = posting.popularityScore;
                 }
             }
 
             scoreSum.add(relevanceScore);
-            docScoresMap.put(docId, new RankedDocument(docId, url, title, relevanceScore, 0, 0, postings.get(0).tf));
+            docScoresMap.put(docId, new RankedDocument(docId, url, title, relevanceScore, popularityScore, 0, postings.get(0).tf));
         });
 
         // Step 3: Normalize scores if sum is non-zero
@@ -91,12 +93,14 @@ public class RelevanceScorer {
         final double idf;
         final String url;
         final String title;
+        final double popularityScore;
 
-        PostingInfo(int tf, double idf, String url, String title) {
+        PostingInfo(int tf, double idf, String url, String title , double popularityScore) {
             this.tf = tf;
             this.idf = idf;
             this.url = url;
             this.title = title;
+            this.popularityScore = popularityScore;
         }
     }
 }

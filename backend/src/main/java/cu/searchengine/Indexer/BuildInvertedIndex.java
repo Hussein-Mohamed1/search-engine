@@ -24,13 +24,15 @@ public class BuildInvertedIndex {
             int docId = doc.getId();
             String title = doc.getTitle();
             String url = doc.getUrl();
+            double popularity=doc.getPopularityScore();
+//            System.out.println("Popularity: "+popularity);
             Map<String, Posting> tokenizedWords = new HashMap<>();
 
             // Tokenize each section with its priority position
-            processText(doc.getTitle(), docId, 4,tokenizedWords,tokenizer,title,url,wordfreq);      // Title (4)
-            processText(String.join(" ",doc.getMainHeading()), docId, 3,tokenizedWords,tokenizer,title,url,wordfreq); // Main Heading (3)
-            processText(String.join(" ", doc.getSubHeadings()), docId, 2,tokenizedWords,tokenizer,title,url,wordfreq); // Subheading (2)
-            processText(doc.getContent(), docId, 1,tokenizedWords,tokenizer,title,url,wordfreq);    // Content (1)
+            processText(doc.getTitle(), docId, 4,tokenizedWords,tokenizer,title,url,popularity,wordfreq);      // Title (4)
+            processText(String.join(" ",doc.getMainHeading()), docId, 3,tokenizedWords,tokenizer,title,url,popularity,wordfreq); // Main Heading (3)
+            processText(String.join(" ", doc.getSubHeadings()), docId, 2,tokenizedWords,tokenizer,title,url,popularity,wordfreq); // Subheading (2)
+            processText(doc.getContent(), docId, 1,tokenizedWords,tokenizer,title,url,popularity,wordfreq);    // Content (1)
 
             for (Map.Entry<String, Posting> entry : tokenizedWords.entrySet()) {
                 String word = entry.getKey();
@@ -52,11 +54,11 @@ public class BuildInvertedIndex {
         }
     }
 
-    private void processText(String text, int docId, int priority, Map<String, Posting> tokenizedWords,Tokenizer tokenizer,String title,String url,ConcurrentHashMap<String,Integer> wordfreq) {
+    private void processText(String text, int docId, int priority, Map<String, Posting> tokenizedWords,Tokenizer tokenizer,String title,String url,double popularity,ConcurrentHashMap<String,Integer> wordfreq) {
         if (text == null || text.isEmpty()) return;
 
         // Tokenize and track priority-based positions
-       tokenizer.tokenizeWithPriority(text, priority,tokenizedWords,title,url,wordfreq);
+       tokenizer.tokenizeWithPriority(text, priority,tokenizedWords,title,url,popularity,wordfreq);
     }
 
     public Map<Integer, Posting> getPostings(String word) {

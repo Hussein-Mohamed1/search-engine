@@ -55,6 +55,13 @@ public class DocumentService {
 
         return webGraph;
     }
+    public boolean documentExists(Integer id) {
+        return documentsRepository.existsById(id);
+    }
+
+    public void updatePopularityScore(Integer id, Double popularityScore) {
+        documentsRepository.updatePopularityScore(id, popularityScore);
+    }
 
     public Map<Integer, Set<Integer>> getIncomingLinks() {
         List<Documents> documents = documentsRepository.findAll();

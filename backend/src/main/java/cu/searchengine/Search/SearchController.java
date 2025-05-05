@@ -85,18 +85,8 @@ public class SearchController {
         // Only process the documents we need for this page
         List<RankedDocument> pagedResults;
         if (!operations.isEmpty()) {
-            // Process documents in chunks until we find enough matches for the current page
-            List<RankedDocument> filteredResults = new ArrayList<>();
-            int currentIndex = 0;
-            int chunkSize = 50; // Process 50 documents at a time
-
-            while (filteredResults.size() < requiredMatches && currentIndex < ranked.size()) {
-                int endIndex = Math.min(currentIndex + chunkSize, ranked.size());
-                List<RankedDocument> chunk = ranked.subList(currentIndex, endIndex);
-                List<RankedDocument> matchedChunk = filterByLogicalOperations(chunk, operations);
-                filteredResults.addAll(matchedChunk);
-                currentIndex = endIndex;
-            }
+     
+            List<RankedDocument> filteredResults = filterByLogicalOperations(ranked, operations);
 
             // Get the correct page of results
             int from = validPage * size;
