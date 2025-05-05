@@ -29,6 +29,7 @@ public class BackendApplication implements CommandLineRunner {
     private final Crawler crawler; // Make sure Crawler is a @Component or @Service
     private final InvertedIndex invertedIndex; // Make sure ThreadPool is a @Component or @Service
     private PopularityScorer popularityScorer;
+
     @Autowired
     public BackendApplication(RankingService rankingService, SearchService searchService, DocumentService documentService, InvertedIndexService invertedIndexService, Crawler crawler, InvertedIndex invertedIndex, PopularityScorer popularityScorer) {
         this.rankingService = rankingService;
@@ -47,11 +48,11 @@ public class BackendApplication implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 //        runCrawler();
-
+//
 //        popularityScorer = new PopularityScorer(documentService);
 //        logger.info("Popularity scorer started");
 //        popularityScorer.calculatePopularityScores();
-//        logger.info("Popularity scorer started");
+//        logger.info("Popularity scorer Finished");
     }
 
     //     Run the crawler continuously (every 10 seconds, adjust as needed)
@@ -65,7 +66,7 @@ public class BackendApplication implements CommandLineRunner {
     }
 
     // Run the indexer periodically (every 5 minutes, adjust as needed)
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelay = 300_000)
     public void runIndexer() {
         try {
             invertedIndex.implementThreading();

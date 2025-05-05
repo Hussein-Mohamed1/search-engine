@@ -70,8 +70,8 @@ public class Crawler implements Runnable {
     public Crawler(DocumentService documentService) {
         // Set default values for other fields as needed
         this("Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.166 Safari/537.36", // userAgent
-                1000, // MAX_PAGE_COUNT
-                50, // numberOfThreads
+                6000, // MAX_PAGE_COUNT
+                128, // numberOfThreads
                 60000, // queueCapacity
                 documentService);
     }
@@ -90,7 +90,7 @@ public class Crawler implements Runnable {
         this.executorService = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, 10L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(this.WAIT_QUEUE_CAPACITY), new ThreadPoolExecutor.CallerRunsPolicy());
         this.pages404 = new HashMap<>();
 
-        logger.info("Crawler initialized with userAgent={}, maxPages={}, threads={}, queueCapacity={}", userAgent, pgCount, numberOfThreads, queueCapacity);
+//        logger.info("Crawler initialized with userAgent={}, maxPages={}, threads={}, queueCapacity={}", userAgent, pgCount, numberOfThreads, queueCapacity);
 
         // Try to restore previous state or load initial state if restoration fails
         if (!restoreState()) {
@@ -125,7 +125,10 @@ public class Crawler implements Runnable {
         // Change the while condition to prevent possible thread starvation
         // Note: In previous condition, !urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT,
         // if crawling is over and queue is empty but currentPage.get() < MAX_PAGE_COUNT is true, this thread will get starved
-        while (!urlQueue.isEmpty() && currentPage.get() < MAX_PAGE_COUNT) {
+        while (!urlQueue.isEmpty() || currentPage.get() < MAX_PAGE_COUNT) {
+            if (currentPage.get() >= MAX_PAGE_COUNT)
+                break;
+
             String url = urlQueue.poll();
             if (url == null) continue;
 
@@ -328,7 +331,7 @@ public class Crawler implements Runnable {
     private void shutdownExecutorService() {
         executorService.shutdown();
         try {
-            if (!executorService.awaitTermination(5, TimeUnit.MINUTES)) {
+            if (!executorService.awaitTermination(30, TimeUnit.MINUTES)) {
 
                 logger.warn("Forcing shutdown of crawler thread pool...");
                 executorService.shutdownNow();

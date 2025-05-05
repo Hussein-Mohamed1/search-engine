@@ -25,7 +25,7 @@ public class BuildInvertedIndex {
             String title = doc.getTitle();
             String url = doc.getUrl();
             double popularity=doc.getPopularityScore();
-            System.out.println("Popularity: "+popularity);
+//            System.out.println("Popularity: "+popularity);
             Map<String, Posting> tokenizedWords = new HashMap<>();
 
             // Tokenize each section with its priority position
