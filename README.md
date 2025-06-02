@@ -1,7 +1,3 @@
-Certainly! Here’s an improved version of your README.md, with enhanced clarity, structure, and professionalism. I’ve added more detailed sections, usage instructions, and made sure the formatting is clean and informative.
-
----
-
 # 🚀 Search Engine Project
 
 ![Project](https://img.shields.io/badge/Project-Search%20Engine-blue)
