@@ -47,7 +47,7 @@ A comprehensive, crawler-based search engine developed for the Advanced Programm
   Starts from seed URLs, collects and normalizes documents, respects robots.txt, employs multi-threading for scalability.
 
 - **Indexer:**  
-  Extracts and processes content from HTML, builds efficient data structures for quick query responses, supports incremental updates.
+ builds efficient data structures for quick query responses, supports incremental updates.
 
 - **Query Processor:**  
   Handles preprocessing, stemming, and advanced query types (including phrase search).
@@ -113,17 +113,20 @@ A comprehensive, crawler-based search engine developed for the Advanced Programm
 
 - Crawls and indexes 6,000+ web pages
 - Typical query response: ~0.5 seconds
-- Indexing speed: ~100 pages/minute
+- Indexing speed: ~6000 pages in 45 seconds
 - Ranking accuracy comparable to basic commercial search engines
 
 ---
 
 ## 👥 Contributors
 
-- [Hussein Mohamed](https://github.com/Hussein-Mohamed1)
-- [Tasneem Ahmed](https://github.com/xx-Tasneem-Ahmed-xx)
-- [Mohamed Abdelaziem](https://github.com/MohamedAbdelaiem)
-- [Youssef Mohamed](https://github.com/username3)
+| Avatar                                                                        | Name                                                          | Role                               |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------- |
+| <img src="https://github.com/Hussein-Mohamed1.png" width="50" height="50">    | [**Hussein Mohamed**](https://github.com/Hussein-Mohamed1)    | 🧠 Ranker                          |
+| <img src="https://github.com/xx-Tasneem-Ahmed-xx.png" width="50" height="50"> | [**Tasneem Ahmed**](https://github.com/xx-Tasneem-Ahmed-xx)   | 🤖 Crawler                         |
+| <img src="https://github.com/MohamedAbdelaiem.png" width="50" height="50">    | [**Mohamed Abdelaziem**](https://github.com/MohamedAbdelaiem) | 🗂️ Indexer                        |
+| <img src="https://github.com/username3.png" width="50" height="50">           | [**Youssef Mohamed**](https://github.com/username3)           | 🔍 Query Processor & Web Interface |
+
 
 ---
 
