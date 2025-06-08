@@ -10,6 +10,7 @@ A comprehensive, crawler-based search engine developed for the Advanced Programm
 
 ## Table of Contents
 
+- [Video](#Video)
 - [Features](#features)
 - [System Architecture](#system-architecture)
 - [Technologies Used](#technologies-used)
@@ -21,6 +22,11 @@ A comprehensive, crawler-based search engine developed for the Advanced Programm
 - [References](#references)
 
 ---
+
+## Video
+![Search Engine Demo](assests/video.gif)
+
+
 
 ## ✨ Features
 
